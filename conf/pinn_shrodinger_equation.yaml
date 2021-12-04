@@ -1,0 +1,29 @@
+# ------------------- basic -------------------- #
+seed: 1024
+# ------------------- data ------------------- #
+# state of initial data
+state_num: 2
+# box length(calculate area)
+box_l: 2
+# calculate time
+time_total: 2
+# time step
+delta_time: 0.00001
+# space step
+delta_x: 0.01
+
+# number of boundary data sampling
+boundary_num: 50
+# number of initial data sampling
+initial_num: 50
+# number of common data sampling
+common_num: 20000
+
+# data loader batch size
+# "-1" means loader all data
+boundary_batch_size: -1
+initial_batch_size: -1
+common_batch_size: -1
+
+# ------------------- model ------------------- #
+model_layers: [100, 100, 100, 100]
