@@ -1,5 +1,7 @@
 # ------------------- basic -------------------- #
 seed: 1024
+input_dims: 2
+output_dims: 2
 # ------------------- data ------------------- #
 # state of initial data
 state_num: 2
@@ -27,3 +29,21 @@ common_batch_size: -1
 
 # ------------------- model ------------------- #
 model_layers: [100, 100, 100, 100]
+
+# ------------------- train ------------------- #
+max_epochs: 2000
+
+lr: 1.0
+max_iter: 50000
+max_eval: 50000
+history_size: 50
+tolerance_grad: 1e-5
+line_search_fn: "strong_wolfe"
+
+# ------------------- save ------------------- #
+figure_output_root: "./output/plots"
+model_output_root: "./output/weights"
+
+numerical_figure_output_name: "shrodinger_equation_FD_fourth_Lounge_Kutta.png"
+pinn_figure_output_name: ""
+model_output_name: "shrodinger_equation_pinn.pth"

@@ -3,18 +3,49 @@
 # @author     : Zijiang Yang                                   
 # @file       : shrodinger_equation_pinn.py
 # @Time       : 2021/12/4 15:11
+import os
+import sys
+sys.path.append(os.curdir)  # add ROOT to PATH
+import time
 import yaml
 import random
+import logging
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 import torch
+from torch import nn, optim
 from torch.utils.data import DataLoader
 
 from data.MyDataset import MyDataset
 from utils.DataCreator import sampling_func
 from models.PINN_models import PINN
+
+
+logging.basicConfig(level=logging.NOTSET,
+                    format="%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s")
+# create logger
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# create file handler
+run_time = time.strftime('%Y%m%d%H%M', time.localtime(time.time()))
+log_file_path = os.path.join("./logs", "{}.log".format(run_time))
+fh = logging.FileHandler(log_file_path, mode="w")
+fh.setLevel(logging.NOTSET)
+
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.INFO)
+
+# output format
+basic_format = logging.Formatter("%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s")
+fh.setFormatter(basic_format)
+# ch.setFormatter(basic_format)
+
+# add logger to handler
+logger.addHandler(fh)
+# logger.addHandler(ch)
 
 
 class DataCreator(object):
@@ -50,6 +81,10 @@ class DataCreator(object):
 
         # data init
         self._data_init()
+
+        # output
+        self.figure_output_path = os.path.join(data_conf["figure_output_root"],
+                                               data_conf["numerical_figure_output_name"])
 
     def _data_init(self):
 
@@ -96,9 +131,8 @@ class DataCreator(object):
             self.phi_matrix[:, i + 1] = self.phi_matrix[:, i] + (self.delta_time / 6) * (
                         self.k_vector_matrix[:, 0] + 2 * self.k_vector_matrix[:, 1] +
                         2 * self.k_vector_matrix[:, 2] + self.k_vector_matrix[:, 3])
-        print("done...")
 
-    def plot_func(self):
+    def plot_func(self, plot_figure=False, save_figure=False):
         # plot
 
         plt.figure(figsize=(10, 10), dpi=150)
@@ -145,7 +179,10 @@ class DataCreator(object):
         ax_imag.set_xticklabels(time_labels)
         ax_imag.set_yticklabels(position_labels)
 
-        plt.show()
+        if save_figure:
+            plt.savefig(self.figure_output_path)
+        if plot_figure:
+            plt.show()
 
     def sampling(self, boundary_num, initial_num, common_num, seed=None):
         x_range = [-self.box_l/2, self.box_l/2]
@@ -161,6 +198,8 @@ class ShrodingerEquationPinn(object):
     
     def __init__(self, conf):
         super(ShrodingerEquationPinn, self).__init__()
+        logger.info("PINN for Shrodinger Equation \n \n \n")
+        logger.info("hyps list {}".format(conf))
 
         # seed
         random.seed(conf["seed"])
@@ -173,12 +212,21 @@ class ShrodingerEquationPinn(object):
             self.device = torch.device("cuda")
         else:
             self.device = torch.device("cpu")
+        self.EPOCHS = conf["max_epochs"]
 
         # ---------------------------------------- #
         # ----------------- data ----------------- #
         # ---------------------------------------- #
         self.data_creator = DataCreator(conf)
+        begin_fd_time = time.time()
+        logger.info("create data ...")
         self.data_creator.iter_func()
+        over_fd_time = time.time()
+        logger.info("finite difference with fourth lunge-kutta method uses {:.5f}s".format(over_fd_time - begin_fd_time))
+        self.data_creator.plot_func(save_figure=True)
+        logger.info("save figure as {}".format(self.data_creator.figure_output_path))
+
+        # sample
         data_dict = self.data_creator.sampling(boundary_num=conf["boundary_num"],
                                                initial_num=conf["initial_num"],
                                                common_num=conf["common_num"], seed=conf["seed"])
@@ -193,32 +241,152 @@ class ShrodingerEquationPinn(object):
         common_dataset = MyDataset(common_data)
         # dataloader
         if conf["boundary_batch_size"] == -1:
-            self.boundary_dataloader = DataLoader(boundary_dataset, batch_size=len(boundary_dataset))
+            self.boundary_dataloader = DataLoader(boundary_dataset, batch_size=conf["boundary_num"],
+                                                  collate_fn=boundary_dataset.collate_fn)
         else:
-            self.boundary_dataloader = DataLoader(boundary_dataset, batch_size=conf["boundary_batch_size"])
+            self.boundary_dataloader = DataLoader(boundary_dataset, batch_size=conf["boundary_batch_size"],
+                                                  collate_fn=boundary_dataset.collate_fn)
 
         if conf["initial_batch_size"] == -1:
-            self.initial_dataloader = DataLoader(initial_dataset, batch_size=len(initial_dataset))
+            self.initial_dataloader = DataLoader(initial_dataset, batch_size=conf["initial_num"],
+                                                 collate_fn=initial_dataset.collate_fn)
         else:
-            self.initial_dataloader = DataLoader(initial_dataset, batch_size=conf["initial_batch_size"])
+            self.initial_dataloader = DataLoader(initial_dataset, batch_size=conf["initial_batch_size"],
+                                                 collate_fn=initial_dataset.collate_fn)
 
         if conf["common_batch_size"] == -1:
-            self.common_dataloader = DataLoader(common_dataset, batch_size=len(common_dataset))
+            self.common_dataloader = DataLoader(common_dataset, batch_size=conf["common_num"],
+                                                collate_fn=common_dataset.collate_fn)
         else:
-            self.common_dataloader = DataLoader(common_dataset, batch_size=conf["common_batch_size"])
+            self.common_dataloader = DataLoader(common_dataset, batch_size=conf["common_batch_size"],
+                                                collate_fn=common_dataset.collate_fn)
+
+        logger.info("create dataset and dataloader done ...")
 
         # ----------------------------------------- #
         # ----------------- model ----------------- #
         # ----------------------------------------- #
-        self.pinn_model = PINN(input_dim=2, output_dim=2, dim_list=conf["model_layers"])
+        self.pinn_model = PINN(input_dim=2, output_dim=2, dim_list=conf["model_layers"]).to(self.device)
+        logger.info("create pinn done ...")
 
-        # ------------------------------------------- #
-        # ----------------- recoder ----------------- #
-        # ------------------------------------------- #
+        # ------------------------------------------------------ #
+        # ----------------- optimizer and loss ----------------- #
+        # ------------------------------------------------------ #
+        params = [p for p in self.pinn_model.parameters() if p.requires_grad]
+        # self.optimizer = optim.LBFGS(params, lr=conf["lr"],
+        #                              max_iter=conf["max_iter"],
+        #                              max_eval=conf["max_eval"],
+        #                              history_size=conf["history_size"],
+        #                              tolerance_grad=conf["tolerance_grad"])
+        self.optimizer = optim.Adam(params)
+        # self.optimizer = optim.SGD(params, lr=5e-4)
+        logger.info("create optimizer and criterion done ...")
+
+        # ---------------------------------------- #
+        # ----------------- save ----------------- #
+        # ---------------------------------------- #
+        self.model_output_path = os.path.join(conf["model_output_root"], conf["model_output_name"])
+        self.pinn_val_output_figure = os.path.join(conf["figure_output_root"], conf["pinn_figure_output_name"])
+
+    def train(self):
+
+        logger.info("begin train ...")
+        begin_train_time = time.time()
+
+        for epoch in range(1, self.EPOCHS+1):
+            self.pinn_model.train()
+            self.optimizer.zero_grad()
+
+            boundary_loss = np.zeros(1)
+            initial_loss = np.zeros(1)
+            common_loss = np.zeros(1)
+
+            # boundary data
+            for step, batch in enumerate(self.boundary_dataloader):
+                boundary_input_tensor_list = batch["input"]
+                boundary_input_x = boundary_input_tensor_list[0].to(self.device)
+                boundary_input_t = boundary_input_tensor_list[1].to(self.device)
+
+                boundary_pred_tensor = self.pinn_model(boundary_input_x, boundary_input_t)
+
+                boundary_loss = torch.mean((boundary_pred_tensor -
+                                            torch.zeros_like(boundary_pred_tensor).to(self.device))**2)
+
+                boundary_loss.backward()
+
+            # initial data
+            for step, batch in enumerate(self.initial_dataloader):
+                initial_input_tensor_list = batch["input"]
+                initial_output_tensor = batch["output"].to(self.device)
+                initial_input_x = initial_input_tensor_list[0].to(self.device)
+                initial_input_t = initial_input_tensor_list[1].to(self.device)
+
+                initial_pred_tensor = self.pinn_model(initial_input_x, initial_input_t)
+
+                initial_loss = torch.mean((initial_pred_tensor-initial_output_tensor)**2)
+
+                initial_loss.backward()
+
+            # common data
+            for step, batch in enumerate(self.common_dataloader):
+                common_input_tensor_list = batch["input"]
+                common_input_x = common_input_tensor_list[0].to(self.device)
+                common_input_t = common_input_tensor_list[1].to(self.device)
+
+                mask_matrix = torch.ones(common_input_x.shape[0]).to(self.device)
+
+                # y
+                common_pred_tensor = self.pinn_model(common_input_x, common_input_t)
+
+                # dy/dx
+                dy_dx_real = torch.autograd.grad(common_pred_tensor[:, 0], common_input_x,
+                                                 grad_outputs=mask_matrix,
+                                                 create_graph=True, retain_graph=True)[0]
+                dy_dx_imag = torch.autograd.grad(common_pred_tensor[:, 1], common_input_x,
+                                                 grad_outputs=mask_matrix,
+                                                 create_graph=True, retain_graph=True)[0]
+
+                # dy/dt
+                dy_dt_real = torch.autograd.grad(common_pred_tensor[:, 0], common_input_t,
+                                                 grad_outputs=mask_matrix,
+                                                 create_graph=True, retain_graph=True)[0]
+                dy_dt_imag = torch.autograd.grad(common_pred_tensor[:, 1], common_input_t,
+                                                 grad_outputs=mask_matrix,
+                                                 create_graph=True, retain_graph=True)[0]
+
+                # d^2y/dx^2
+                dy_dx_real_2nd = torch.autograd.grad(dy_dx_real, common_input_x,
+                                                     grad_outputs=mask_matrix,
+                                                     create_graph=True, retain_graph=True)[0]
+                dy_dx_imag_2nd = torch.autograd.grad(dy_dx_imag, common_input_x,
+                                                     grad_outputs=mask_matrix,
+                                                     create_graph=True, retain_graph=True, allow_unused=True)[0]
+                # PDE output
+                pde_output_real = 2*dy_dx_real_2nd - dy_dt_imag
+                pde_output_imag = 2*dy_dx_imag_2nd + dy_dt_real
+
+                common_loss = torch.mean(pde_output_real**2)+torch.mean(pde_output_imag**2)
+
+                common_loss.backward()
+
+            self.optimizer.step()
+
+            if epoch % 10 == 0:
+                logger.info("[{}/{}]\tboundary loss:{:.5f}\tinitial loss:{:.5f}\tcommon loss:{:.5f}".format(epoch,
+                                                                                                            self.EPOCHS,
+                                                                                                            boundary_loss.item(),
+                                                                                                            initial_loss.item(),
+                                                                                                            common_loss.item()))
+
+        over_train_time = time.time()
+        logger.info("train over ...")
+        logger.info("train {} epochs in {:.5f}s".format(self.EPOCHS, over_train_time-begin_train_time))
+
+        torch.save(self.pinn_model.state_dict(), self.model_output_path)
+        logger.info("save model as {}".format(self.model_output_path))
 
 
 if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_shrodinger_equation.yaml"), Loader=yaml.FullLoader)
-    data_creator = DataCreator(_conf)
-    data_creator.iter_func()
-    data_creator.plot_func()
+    main_ = ShrodingerEquationPinn(_conf)
+    main_.train()

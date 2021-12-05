@@ -22,8 +22,13 @@ class PINN(nn.Module):
             cur_dim = dim
         self.pinn_network.add_module("output_layer", nn.Linear(cur_dim, output_dim))
 
-    def forward(self, x):
-        return self.pinn_network(x)
+    def forward(self, x, t):
+
+        x = torch.unsqueeze(x, -1)
+        t = torch.unsqueeze(t, -1)
+        input_tensor = torch.cat((x, t), -1)
+
+        return self.pinn_network(input_tensor)
 
 
 if __name__ == "__main__":

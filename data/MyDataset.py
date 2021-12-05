@@ -3,13 +3,15 @@
 # @author     : Zijiang Yang                                   
 # @file       : MyDataset.py
 # @Time       : 2021/12/4 21:04
+import time
+
 import torch
 from torch.utils.data import Dataset
 
 
 class MyDataset(Dataset):
 
-    def __init__(self, data_list, dims=2) -> None:
+    def __init__(self, data_list, dims=2, device=None) -> None:
         """
         sample_i: [x_1, x_2, ..., x_{n-1}, t, true_output_real, true_output_imag]
         :param data_list: [sample_1, sample_2, ..., sample_n]
@@ -18,6 +20,8 @@ class MyDataset(Dataset):
         super(MyDataset, self).__init__()
         self.data_list = data_list
         self.dims = dims
+        if device is not None:
+            self.device = device
 
     def __getitem__(self, item):
 
@@ -39,9 +43,10 @@ class MyDataset(Dataset):
             output_list.append(torch.unsqueeze(torch.from_numpy(sample["output_vector"]), 0))
 
         input_tensor = torch.cat(input_list, dim=0).type(torch.float32)
+        input_tensor_list = [input_tensor[:, i].requires_grad_() for i in range(input_tensor.shape[-1])]
         output_tensor = torch.cat(output_list, dim=0).type(torch.float32)
 
-        return {"input": input_tensor, "output": output_tensor}
+        return {"input": input_tensor_list, "output": output_tensor}
 
 
 if __name__ == "__main__":
@@ -55,5 +60,6 @@ if __name__ == "__main__":
     for i, test_batch in enumerate(test_dataloader):
         test_input_tensor = test_batch["input"]
         test_output_tensor = test_batch["output"]
-        print(test_input_tensor.shape, test_output_tensor.shape)
-        print(torch.sum(test_input_tensor), torch.sum(test_output_tensor))
+        for j in range(len(test_input_tensor)):
+            print(test_input_tensor[j].shape)
+        print(torch.sum(test_output_tensor))
