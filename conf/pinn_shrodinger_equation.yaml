@@ -10,7 +10,7 @@ box_l: 2
 # calculate time
 time_total: 2
 # time step
-delta_time: 0.00001
+delta_time: 0.0001
 # space step
 delta_x: 0.01
 
@@ -19,7 +19,7 @@ boundary_num: 50
 # number of initial data sampling
 initial_num: 50
 # number of common data sampling
-common_num: 20000
+common_num: 2000
 
 # data loader batch size
 # "-1" means loader all data
@@ -29,9 +29,10 @@ common_batch_size: -1
 
 # ------------------- model ------------------- #
 model_layers: [100, 100, 100, 100]
+load_weight: "False"
 
 # ------------------- train ------------------- #
-max_epochs: 2000
+max_epochs: 10000
 
 lr: 1.0
 max_iter: 50000
@@ -45,5 +46,5 @@ figure_output_root: "./output/plots"
 model_output_root: "./output/weights"
 
 numerical_figure_output_name: "shrodinger_equation_FD_fourth_Lounge_Kutta.png"
-pinn_figure_output_name: ""
+pinn_figure_output_name: "shrodinger_equation_PINN.png"
 model_output_name: "shrodinger_equation_pinn.pth"

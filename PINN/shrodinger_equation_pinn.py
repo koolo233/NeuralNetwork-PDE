@@ -11,16 +11,16 @@ import yaml
 import random
 import logging
 import numpy as np
-import seaborn as sns
+
 import matplotlib.pyplot as plt
 
 import torch
-from torch import nn, optim
+from torch import optim
 from torch.utils.data import DataLoader
 
 from data.MyDataset import MyDataset
-from utils.DataCreator import sampling_func
 from models.PINN_models import PINN
+from data.DataCreator import ShrodingerEquationDataCreator
 
 
 logging.basicConfig(level=logging.NOTSET,
@@ -35,171 +35,21 @@ log_file_path = os.path.join("./logs", "{}.log".format(run_time))
 fh = logging.FileHandler(log_file_path, mode="w")
 fh.setLevel(logging.NOTSET)
 
-# ch = logging.StreamHandler()
-# ch.setLevel(logging.INFO)
-
 # output format
 basic_format = logging.Formatter("%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s")
 fh.setFormatter(basic_format)
-# ch.setFormatter(basic_format)
 
 # add logger to handler
 logger.addHandler(fh)
-# logger.addHandler(ch)
-
-
-class DataCreator(object):
-    """
-    create valuation data
-    using finite difference with fourth Lunge-Kutta Method
-    """
-
-    def __init__(self, data_conf):
-        super(DataCreator, self).__init__()
-
-        # state num
-        self.state_num = data_conf['state_num']
-        # box length
-        self.box_l = data_conf['box_l']
-        # cal time
-        self.time_total = data_conf['time_total']
-        # time step
-        self.delta_time = data_conf['delta_time']
-        # space step
-        self.delta_x = data_conf['delta_x']
-        # time discrete num
-        self.time_n = int(self.time_total / self.delta_time)
-        # space discrete num
-        self.space_n = int(self.box_l / self.delta_x)
-
-        # result matrix
-        self.phi_matrix = None
-        # param matrix
-        self.parm_matrix = None
-        # k matrix
-        self.k_vector_matrix = None
-
-        # data init
-        self._data_init()
-
-        # output
-        self.figure_output_path = os.path.join(data_conf["figure_output_root"],
-                                               data_conf["numerical_figure_output_name"])
-
-    def _data_init(self):
-
-        # result matrix space_point * time_point
-        self.phi_matrix = np.zeros((int(self.space_n), int(self.time_n))).astype(np.complex64)
-        # def A matrix
-        self.parm_matrix = -2 * np.eye(int(self.space_n)) + \
-                           np.eye(int(self.space_n), k=1) + \
-                           np.eye(int(self.space_n), k=-1) + 0.j
-        self.parm_matrix[0, :] = 0
-        self.parm_matrix[-1, :] = 0
-
-        # init wave
-        self.phi_matrix[:, 0] = np.sin((self.state_num * np.pi / self.box_l) *
-                                       (np.linspace(-self.box_l / 2, self.box_l / 2, self.space_n) +
-                                        self.box_l / 2))
-
-        # def k1, k2, k3, k4
-        # k1 = k_vector_matrix[:, 0]
-        # k2 = k_vector_matrix[:, 1]
-        # k3 = k_vector_matrix[:, 2]
-        # k4 = k_vector_matrix[:, 3]
-        self.k_vector_matrix = np.zeros((int(self.space_n), 4)).astype(np.complex64)
-
-    def iter_func(self):
-        constant_ = 1.j / (2 * np.power(self.delta_x, 2))
-        for i in range(self.time_n - 1):
-            # k1
-            self.k_vector_matrix[:, 0] = constant_ * np.matmul(self.parm_matrix, self.phi_matrix[:, i])
-            # k2
-            self.k_vector_matrix[:, 1] = constant_ * (
-                np.matmul(self.parm_matrix, self.phi_matrix[:, i] +
-                          (self.delta_time / 2) * self.k_vector_matrix[:, 0]))
-            # k3
-            self.k_vector_matrix[:, 2] = constant_ * (
-                np.matmul(self.parm_matrix, self.phi_matrix[:, i] +
-                          (self.delta_time / 2) * self.k_vector_matrix[:, 1]))
-            # k4
-            self.k_vector_matrix[:, 3] = constant_ * (
-                np.matmul(self.parm_matrix, self.phi_matrix[:, i] +
-                          self.delta_time * self.k_vector_matrix[:, 2]))
-            # if i % 1000 == 0:
-            #     print(np.max(k_vector_matrix))
-            self.phi_matrix[:, i + 1] = self.phi_matrix[:, i] + (self.delta_time / 6) * (
-                        self.k_vector_matrix[:, 0] + 2 * self.k_vector_matrix[:, 1] +
-                        2 * self.k_vector_matrix[:, 2] + self.k_vector_matrix[:, 3])
-
-    def plot_func(self, plot_figure=False, save_figure=False):
-        # plot
-
-        plt.figure(figsize=(10, 10), dpi=150)
-
-        draw_time_list = np.linspace(0, self.time_n - 1, min(400, self.time_n)).astype(np.int32)
-        draw_position_list = np.linspace(0, self.space_n - 1, min(400, self.space_n)).astype(np.int32)
-        phi_matrix_draw = self.phi_matrix[draw_position_list, :][:, draw_time_list]
-
-        time_list = np.linspace(0, self.time_total, len(draw_time_list))
-        position_list = np.linspace(-self.box_l / 2, self.box_l / 2, len(draw_position_list))
-
-        position_labels = np.around(np.linspace(-self.box_l / 2, self.box_l / 2, 4), 1)
-        # the index position of the tick labels
-        position_ticks = list()
-        for label in position_labels:
-            idx_pos = len(position_list) - np.argmin(np.abs(label - position_list))
-            position_ticks.append(idx_pos)
-
-        time_labels = np.around(np.linspace(0, self.time_total, 4), 1)
-        time_ticks = list()
-        for label in time_labels:
-            idx_pos = np.argmin(np.abs(label - time_list))
-            time_ticks.append(idx_pos)
-
-        # real
-        plt.subplot(2, 1, 1)
-        ax = sns.heatmap(np.real(phi_matrix_draw), annot=False)
-        ax.set_xlabel("time")
-        ax.set_ylabel("position")
-        ax.set_yticks(position_ticks)
-        ax.set_xticks(time_ticks)
-        ax.set_title("real part of wave function —— time")
-        ax.set_xticklabels(time_labels)
-        ax.set_yticklabels(position_labels)
-
-        # imag
-        plt.subplot(2, 1, 2)
-        ax_imag = sns.heatmap(np.imag(phi_matrix_draw), annot=False)
-        ax_imag.set_xlabel("time")
-        ax_imag.set_ylabel("position")
-        ax_imag.set_yticks(position_ticks)
-        ax_imag.set_xticks(time_ticks)
-        ax_imag.set_title("imaginary part of wave function —— time")
-        ax_imag.set_xticklabels(time_labels)
-        ax_imag.set_yticklabels(position_labels)
-
-        if save_figure:
-            plt.savefig(self.figure_output_path)
-        if plot_figure:
-            plt.show()
-
-    def sampling(self, boundary_num, initial_num, common_num, seed=None):
-        x_range = [-self.box_l/2, self.box_l/2]
-        t_range = [0, self.time_total]
-        data_dict = sampling_func(self.phi_matrix, t_range, x_range, seed=seed,
-                                  boundary_num=boundary_num,
-                                  initial_num=initial_num,
-                                  common_num=common_num)
-        return data_dict
 
 
 class ShrodingerEquationPinn(object):
     
-    def __init__(self, conf):
+    def __init__(self, conf, load_weight_path=None):
         super(ShrodingerEquationPinn, self).__init__()
         logger.info("PINN for Shrodinger Equation \n \n \n")
         logger.info("hyps list {}".format(conf))
+        self.conf = conf
 
         # seed
         random.seed(conf["seed"])
@@ -217,7 +67,7 @@ class ShrodingerEquationPinn(object):
         # ---------------------------------------- #
         # ----------------- data ----------------- #
         # ---------------------------------------- #
-        self.data_creator = DataCreator(conf)
+        self.data_creator = ShrodingerEquationDataCreator(conf)
         begin_fd_time = time.time()
         logger.info("create data ...")
         self.data_creator.iter_func()
@@ -268,6 +118,9 @@ class ShrodingerEquationPinn(object):
         # ----------------------------------------- #
         self.pinn_model = PINN(input_dim=2, output_dim=2, dim_list=conf["model_layers"]).to(self.device)
         logger.info("create pinn done ...")
+        if conf["load_weight"] == "True":
+            logger.info("load weight ...")
+            self.pinn_model.load_state_dict(torch.load(load_weight_path))
 
         # ------------------------------------------------------ #
         # ----------------- optimizer and loss ----------------- #
@@ -372,7 +225,7 @@ class ShrodingerEquationPinn(object):
             self.optimizer.step()
 
             if epoch % 10 == 0:
-                logger.info("[{}/{}]\tboundary loss:{:.5f}\tinitial loss:{:.5f}\tcommon loss:{:.5f}".format(epoch,
+                logger.info("[{}/{}]\tboundary loss:{:.7f}\tinitial loss:{:.7f}\tcommon loss:{:.7f}".format(epoch,
                                                                                                             self.EPOCHS,
                                                                                                             boundary_loss.item(),
                                                                                                             initial_loss.item(),
@@ -385,8 +238,61 @@ class ShrodingerEquationPinn(object):
         torch.save(self.pinn_model.state_dict(), self.model_output_path)
         logger.info("save model as {}".format(self.model_output_path))
 
+    def pred_and_valuation(self):
+        logger.info("begin pred ...")
+        with torch.no_grad():
+            self.pinn_model.eval()
+
+            # data
+            true_output_matrix = self.data_creator.phi_matrix
+            x_position_list = np.linspace(-self.data_creator.box_l / 2, self.data_creator.box_l / 2,
+                                          self.data_creator.space_n)
+            t_position_list = np.linspace(0, self.data_creator.time_total, self.data_creator.time_n)
+
+            pred_output_matrix = np.zeros((int(self.data_creator.space_n),
+                                           int(self.data_creator.time_n))).astype(np.complex64)
+
+            x_position_tensor = torch.from_numpy(x_position_list).type(torch.float32).to(self.device)
+
+            # pred
+            begin_pred_time = time.time()
+            for t, time_point in enumerate(t_position_list):
+                t_tensor = torch.ones_like(x_position_tensor)*time_point
+
+                pred_ = self.pinn_model(x_position_tensor, t_tensor.to(self.device)).detach().cpu().numpy()
+
+                pred_output_matrix[:, t] = pred_[:, 0] + 1.j * pred_[:, 1]
+
+                if t % 1000 == 0:
+                    print(np.max(pred_output_matrix[:, t]), np.min(pred_output_matrix[:, t]))
+                    logger.info("[{}/{}] pred done ...".format(t, len(t_position_list)))
+            over_pred_time = time.time()
+            logger.info("pred done ...")
+            logger.info("pred over at {:.5f}s ...".format(over_pred_time-begin_pred_time))
+
+        # valuation
+        l1_norm = np.linalg.norm(pred_output_matrix.reshape(-1)-true_output_matrix.reshape(-1), 1)
+        l2_norm = np.linalg.norm(pred_output_matrix.reshape(-1)-true_output_matrix.reshape(-1))
+
+        max_error = np.max(np.abs(pred_output_matrix-true_output_matrix))
+        min_error = np.min(np.abs(pred_output_matrix-true_output_matrix))
+        average_error = np.average(np.abs(pred_output_matrix-true_output_matrix))
+
+        logger.info("l1 norm {:.7f}".format(l1_norm))
+        logger.info("l2 norm {:.7f}".format(l2_norm))
+        logger.info("max error {:.7f}".format(max_error))
+        logger.info("min error {:.7f}".format(min_error))
+        logger.info("average error {:.7f}".format(average_error))
+
+        self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
+                                                            self.conf["pinn_figure_output_name"])
+        self.data_creator.phi_matrix = pred_output_matrix.copy()
+        self.data_creator.plot_func(save_figure=True)
+
 
 if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_shrodinger_equation.yaml"), Loader=yaml.FullLoader)
-    main_ = ShrodingerEquationPinn(_conf)
+    weight_path = r"./output/weights/shrodinger_equation_pinn.pth"
+    main_ = ShrodingerEquationPinn(_conf, weight_path)
     main_.train()
+    main_.pred_and_valuation()

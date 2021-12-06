@@ -44,10 +44,10 @@ def sampling_func(input_matrix,
 
         # initial data
         initial_position_list = x_position_list[initial_data_index_list]
-        initial_time_list = np.zeros_like(initial_position_list)
+        initial_time_list = np.ones_like(initial_position_list) * t_range[0]
         initial_data_list = input_matrix[initial_data_index_list, 0]
         initial_data_real = np.real(initial_data_list)
-        initial_data_imag = np.real(initial_data_list)
+        initial_data_imag = np.imag(initial_data_list)
 
         initial_data = np.array(list(zip(initial_position_list,
                                          initial_time_list,
