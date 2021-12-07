@@ -43,7 +43,7 @@ class MyDataset(Dataset):
             output_list.append(torch.unsqueeze(torch.from_numpy(sample["output_vector"]), 0))
 
         input_tensor = torch.cat(input_list, dim=0).type(torch.float32)
-        input_tensor_list = [input_tensor[:, i].requires_grad_() for i in range(input_tensor.shape[-1])]
+        input_tensor_list = [input_tensor[:, i] for i in range(input_tensor.shape[-1])]
         output_tensor = torch.cat(output_list, dim=0).type(torch.float32)
 
         return {"input": input_tensor_list, "output": output_tensor}

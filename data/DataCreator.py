@@ -27,6 +27,93 @@ class BasicDataCreator(object):
         pass
 
 
+class BurgersEquationDataCreator(BasicDataCreator):
+
+    def __init__(self, data_conf):
+        super(BurgersEquationDataCreator, self).__init__()
+
+        # cal area length
+        self.box_l = data_conf["box_l"]
+        # cal time
+        self.time_total = data_conf["time_total"]
+        # time step
+        self.delta_time = data_conf["delta_time"]
+        # space step
+        self.delta_x = data_conf["delta_x"]
+
+        # time discrete num
+        self.time_n = int(self.time_total / self.delta_time)
+        # space discrete num
+        self.space_n = int(self.box_l / self.delta_x)
+
+        # result matrix
+        self.result_matrix = None
+
+        # data init
+        self._data_init()
+
+        # output
+        self.figure_output_path = os.path.join(data_conf["figure_output_root"],
+                                               data_conf["numerical_figure_output_name"])
+
+    def _data_init(self):
+        self.result_matrix = np.zeros((self.space_n, self.time_n))
+
+        # init wave
+        self.result_matrix[:, 0] = -np.sin(np.pi * np.linspace(-self.box_l / 2, self.box_l / 2, self.space_n))
+
+    def iter_func(self):
+        pass
+
+    def plot_func(self, plot_figure=False, save_figure=False):
+        # plot
+
+        plt.figure(figsize=(10, 10), dpi=150)
+
+        draw_time_list = np.linspace(0, self.time_n - 1, min(400, self.time_n)).astype(np.int32)
+        draw_position_list = np.linspace(0, self.space_n - 1, min(400, self.space_n)).astype(np.int32)
+        phi_matrix_draw = self.result_matrix[draw_position_list, :][:, draw_time_list]
+
+        time_list = np.linspace(0, self.time_total, len(draw_time_list))
+        position_list = np.linspace(-self.box_l / 2, self.box_l / 2, len(draw_position_list))
+
+        position_labels = np.around(np.linspace(-self.box_l / 2, self.box_l / 2, 4), 1)
+        # the index position of the tick labels
+        position_ticks = list()
+        for label in position_labels:
+            idx_pos = len(position_list) - np.argmin(np.abs(label - position_list))
+            position_ticks.append(idx_pos)
+
+        time_labels = np.around(np.linspace(0, self.time_total, 4), 1)
+        time_ticks = list()
+        for label in time_labels:
+            idx_pos = np.argmin(np.abs(label - time_list))
+            time_ticks.append(idx_pos)
+
+        ax = sns.heatmap(phi_matrix_draw, annot=False, cmap='rainbow')
+        ax.set_xlabel("time")
+        ax.set_ylabel("position")
+        ax.set_yticks(position_ticks)
+        ax.set_xticks(time_ticks)
+        ax.set_title("real part of wave function —— time")
+        ax.set_xticklabels(time_labels)
+        ax.set_yticklabels(position_labels)
+
+        if save_figure:
+            plt.savefig(self.figure_output_path)
+        if plot_figure:
+            plt.show()
+
+    def sampling(self, boundary_num, initial_num, common_num, seed=None):
+        x_range = [-self.box_l / 2, self.box_l / 2]
+        t_range = [0, self.time_total]
+        data_dict = sampling_func(self.result_matrix, t_range, x_range, seed=seed,
+                                  boundary_num=boundary_num,
+                                  initial_num=initial_num,
+                                  common_num=common_num, imag=False)
+        return data_dict
+
+
 class ShrodingerEquationDataCreator(BasicDataCreator):
     """
     create valuation data
@@ -68,7 +155,7 @@ class ShrodingerEquationDataCreator(BasicDataCreator):
     def _data_init(self):
 
         # result matrix space_point * time_point
-        self.phi_matrix = np.zeros((int(self.space_n), int(self.time_n))).astype(np.complex64)
+        self.phi_matrix = np.zeros((self.space_n, self.time_n)).astype(np.complex64)
         # def A matrix
         self.parm_matrix = -2 * np.eye(int(self.space_n)) + \
                            np.eye(int(self.space_n), k=1) + \

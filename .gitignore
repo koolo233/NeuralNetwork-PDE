@@ -4,4 +4,4 @@ output/
 data/__pycache__/
 models/__pycache__/
 utils/__pycache__/
-PINN/AD_test.py
+PINN/__pycache__/

@@ -24,8 +24,8 @@ class PINN(nn.Module):
 
     def forward(self, x, t):
 
-        x = torch.unsqueeze(x, -1)
-        t = torch.unsqueeze(t, -1)
+        # x = torch.unsqueeze(x, -1)
+        # t = torch.unsqueeze(t, -1)
         input_tensor = torch.cat((x, t), -1)
 
         return self.pinn_network(input_tensor)
@@ -34,7 +34,7 @@ class PINN(nn.Module):
 if __name__ == "__main__":
     test_batch_size = 10
     test_input_dim = 2
-    test_output_dim = 2
+    test_output_dim = 1
 
     test_input_tensor = torch.randn((test_batch_size, test_input_dim))
     test_output_tensor = torch.randn((test_batch_size, test_output_dim))

@@ -15,7 +15,8 @@ def sampling_func(input_matrix,
                   boundary_num=50,
                   initial_num=50,
                   common_num=20000,
-                  seed=None):
+                  seed=None,
+                  imag=True):
 
     if seed is not None:
         np.random.seed(seed)
@@ -46,13 +47,21 @@ def sampling_func(input_matrix,
         initial_position_list = x_position_list[initial_data_index_list]
         initial_time_list = np.ones_like(initial_position_list) * t_range[0]
         initial_data_list = input_matrix[initial_data_index_list, 0]
-        initial_data_real = np.real(initial_data_list)
-        initial_data_imag = np.imag(initial_data_list)
 
-        initial_data = np.array(list(zip(initial_position_list,
-                                         initial_time_list,
-                                         initial_data_real,
-                                         initial_data_imag)))
+        if imag:
+            initial_data_real = np.real(initial_data_list)
+            initial_data_imag = np.imag(initial_data_list)
+
+            initial_data = np.array(list(zip(initial_position_list,
+                                             initial_time_list,
+                                             initial_data_real,
+                                             initial_data_imag)))
+        else:
+            initial_data_real = np.real(initial_data_list)
+
+            initial_data = np.array(list(zip(initial_position_list,
+                                             initial_time_list,
+                                             initial_data_real)))
 
         # boundary data
         boundary_position_index_list = (boundary_data_index_list // len(time_list)) * -1
@@ -61,13 +70,21 @@ def sampling_func(input_matrix,
         boundary_position_list = x_position_list[boundary_position_index_list]
         boundary_time_list = time_list[boundary_time_index_list]
         boundary_data_list = input_matrix[boundary_position_index_list, boundary_time_index_list]
-        boundary_data_real = np.real(boundary_data_list)
-        boundary_data_imag = np.imag(boundary_data_list)
 
-        boundary_data = np.array(list(zip(boundary_position_list,
-                                          boundary_time_list,
-                                          boundary_data_real,
-                                          boundary_data_imag)))
+        if imag:
+            boundary_data_real = np.real(boundary_data_list)
+            boundary_data_imag = np.imag(boundary_data_list)
+
+            boundary_data = np.array(list(zip(boundary_position_list,
+                                              boundary_time_list,
+                                              boundary_data_real,
+                                              boundary_data_imag)))
+        else:
+            boundary_data_real = np.real(boundary_data_list)
+
+            boundary_data = np.array(list(zip(boundary_position_list,
+                                              boundary_time_list,
+                                              boundary_data_real)))
 
         # common data
         common_data_position_index_list = common_data_index_list // len(time_list)
@@ -76,13 +93,21 @@ def sampling_func(input_matrix,
         common_data_position_list = x_position_list[common_data_position_index_list]
         common_data_time_list = time_list[common_data_time_index_list]
         common_data_list = input_matrix[common_data_position_index_list, common_data_time_index_list]
-        common_data_real = np.real(common_data_list)
-        common_data_imag = np.imag(common_data_list)
 
-        common_data = np.array(list(zip(common_data_position_list,
-                                        common_data_time_list,
-                                        common_data_real,
-                                        common_data_imag)))
+        if imag:
+            common_data_real = np.real(common_data_list)
+            common_data_imag = np.imag(common_data_list)
+
+            common_data = np.array(list(zip(common_data_position_list,
+                                            common_data_time_list,
+                                            common_data_real,
+                                            common_data_imag)))
+        else:
+            common_data_real = np.real(common_data_list)
+
+            common_data = np.array(list(zip(common_data_position_list,
+                                            common_data_time_list,
+                                            common_data_real)))
 
         return {"initial": initial_data, "boundary": boundary_data, "common": common_data}
     elif len(input_matrix.shape) == 3 and y_range is not None:

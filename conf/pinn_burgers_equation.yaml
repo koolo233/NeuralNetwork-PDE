@@ -1,0 +1,50 @@
+# ------------------- basic -------------------- #
+func_name: "burgers_equation"
+seed: 1024
+input_dims: 2
+output_dims: 1
+# ------------------- data ------------------- #
+# box length(calculate area)
+box_l: 2
+# calculate time
+time_total: 1
+# time step
+delta_time: 0.0001
+# space step
+delta_x: 0.01
+
+# number of boundary data sampling
+boundary_num: 50
+# number of initial data sampling
+initial_num: 50
+# number of common data sampling
+common_num: 10000
+
+# data loader batch size
+# "-1" means loader all data
+boundary_batch_size: -1
+initial_batch_size: -1
+common_batch_size: -1
+
+# ------------------- model ------------------- #
+model_layers: [20, 20, 20, 20, 20, 20, 20, 20]
+load_weight: "False"
+
+# ------------------- train ------------------- #
+max_epochs: 10000
+
+# optimizer
+lr: 1.0
+max_iter: 50000
+max_eval: 50000
+history_size: 50
+tolerance_grad: 1e-5
+line_search_fn: "strong_wolfe"
+
+# ------------------- save ------------------- #
+figure_output_root: "./output/plots"
+model_output_root: "./output/weights"
+
+numerical_figure_output_name: "burgers_equation_numerical.png"
+pinn_figure_output_name: "burgers_equation_PINN.png"
+model_output_name: "burgers_equation_pinn.pth"
