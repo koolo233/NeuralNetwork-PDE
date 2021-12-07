@@ -1,5 +1,5 @@
 # ------------------- basic -------------------- #
-func_name: "burgers_equation"
+func_name: "1d_heat_transfer_equation"
 seed: 1024
 input_dims: 2
 output_dims: 1
@@ -28,7 +28,7 @@ common_batch_size: -1
 
 # ------------------- model ------------------- #
 model_layers: [20, 20, 20, 20, 20, 20, 20, 20]
-load_weight: "True"
+load_weight: "False"
 
 # ------------------- train ------------------- #
 max_epochs: 10000
@@ -45,8 +45,6 @@ line_search_fn: "strong_wolfe"
 figure_output_root: "./output/plots"
 model_output_root: "./output/weights"
 
-numerical_figure_output_name: "burgers_equation_numerical.png"
-numerical_gif_output_name: "burgers_equation_numerical.gif"
-pinn_figure_output_name: "burgers_equation_PINN.png"
-pinn_gif_output_name: "burgers_equation_PINN.gif"
-model_output_name: "burgers_equation_pinn.pth"
+numerical_figure_output_name: "1d_heat_transfer_equation_numerical.png"
+pinn_figure_output_name: "1d_heat_transfer_equation_PINN.png"
+model_output_name: "1d_heat_transfer_equation_pinn.pth"

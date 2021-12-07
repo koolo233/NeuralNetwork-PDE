@@ -1,7 +1,7 @@
 # !/usr/bin python3                                 
 # encoding    : utf-8 -*-                            
 # @author     : Zijiang Yang                                   
-# @file       : DataCreator.py
+# @file       : DataUtils.py
 # @Time       : 2021/12/4 20:29
 
 import random

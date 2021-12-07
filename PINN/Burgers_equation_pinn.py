@@ -78,9 +78,10 @@ class BurgersEquationPINN(object):
             "finite difference with fourth lunge-kutta method uses {:.5f}s".format(over_fd_time - begin_fd_time)
         )
         # plot numerical data
+        logger.info("create figure and gif ...")
         self.data_creator.plot_func(save_figure=True)
-
         logger.info("save figure as {}".format(self.data_creator.figure_output_path))
+        logger.info("save gif as {}".format(self.data_creator.gif_output_path))
 
         # sampling
         data_dict = self.data_creator.sampling(boundary_num=conf["boundary_num"],
@@ -232,6 +233,8 @@ class BurgersEquationPINN(object):
 
         self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
                                                             self.conf["pinn_figure_output_name"])
+        self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
+                                                         self.conf["pinn_gif_output_name"])
         self.data_creator.result_matrix = pred_output_matrix.copy()
         self.data_creator.plot_func(save_figure=True)
 
@@ -240,5 +243,5 @@ if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_burgers_equation.yaml"), Loader=yaml.FullLoader)
     weight_path = r"./output/weights/burgers_equation_pinn.pth"
     main_ = BurgersEquationPINN(_conf, weight_path)
-    main_.train()
+    # main_.train()
     main_.pred_and_valuation()

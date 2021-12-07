@@ -1,7 +1,7 @@
 # !/usr/bin python3                                 
 # encoding    : utf-8 -*-                            
 # @author     : Zijiang Yang                                   
-# @file       : DataCreator.py
+# @file       : DataUtils.py
 # @Time       : 2021/12/6 13:18
 
 
@@ -9,7 +9,8 @@ import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from utils.DataCreator import sampling_func
+from utils.DataUtils import sampling_func
+from utils.PlotUtils import heatmap_plot_func, two_dim_curve_gif_func
 
 
 class BasicDataCreator(object):
@@ -27,10 +28,10 @@ class BasicDataCreator(object):
         pass
 
 
-class BurgersEquationDataCreator(BasicDataCreator):
+class OneDHeatTransferEquationDataCreator(BasicDataCreator):
 
     def __init__(self, data_conf):
-        super(BurgersEquationDataCreator, self).__init__()
+        super(OneDHeatTransferEquationDataCreator, self).__init__()
 
         # cal area length
         self.box_l = data_conf["box_l"]
@@ -68,7 +69,7 @@ class BurgersEquationDataCreator(BasicDataCreator):
     def plot_func(self, plot_figure=False, save_figure=False):
         # plot
 
-        plt.figure(figsize=(10, 10), dpi=150)
+        plt.figure(figsize=(10, 5), dpi=150)
 
         draw_time_list = np.linspace(0, self.time_n - 1, min(400, self.time_n)).astype(np.int32)
         draw_position_list = np.linspace(0, self.space_n - 1, min(400, self.space_n)).astype(np.int32)
@@ -103,6 +104,80 @@ class BurgersEquationDataCreator(BasicDataCreator):
             plt.savefig(self.figure_output_path)
         if plot_figure:
             plt.show()
+
+    def sampling(self, boundary_num, initial_num, common_num, seed=None):
+        x_range = [-self.box_l / 2, self.box_l / 2]
+        t_range = [0, self.time_total]
+        data_dict = sampling_func(self.result_matrix, t_range, x_range, seed=seed,
+                                  boundary_num=boundary_num,
+                                  initial_num=initial_num,
+                                  common_num=common_num, imag=False)
+        return data_dict
+
+
+class BurgersEquationDataCreator(BasicDataCreator):
+
+    def __init__(self, data_conf):
+        super(BurgersEquationDataCreator, self).__init__()
+
+        # cal area length
+        self.box_l = data_conf["box_l"]
+        # cal time
+        self.time_total = data_conf["time_total"]
+        # time step
+        self.delta_time = data_conf["delta_time"]
+        # space step
+        self.delta_x = data_conf["delta_x"]
+
+        # time discrete num
+        self.time_n = int(self.time_total / self.delta_time)
+        # space discrete num
+        self.space_n = int(self.box_l / self.delta_x)
+
+        # result matrix
+        self.result_matrix = None
+
+        # data init
+        self._data_init()
+
+        # output
+        self.figure_output_path = os.path.join(data_conf["figure_output_root"],
+                                               data_conf["numerical_figure_output_name"])
+        self.gif_output_path = os.path.join(data_conf["figure_output_root"],
+                                            data_conf["numerical_gif_output_name"])
+
+    def _data_init(self):
+        self.result_matrix = np.zeros((self.space_n, self.time_n))
+
+        # init wave
+        self.result_matrix[:, 0] = -np.sin(np.pi * np.linspace(-self.box_l / 2, self.box_l / 2, self.space_n))
+
+    def iter_func(self):
+        pass
+
+    def plot_func(self, plot_figure=False, save_figure=False):
+        x_value_list = np.linspace(0, self.time_total, self.time_n)
+        y_value_list = np.linspace(-self.box_l/2, self.box_l/2, self.space_n)
+        heatmap_plot_func(data_matrix=self.result_matrix,
+                          draw_size=[400, 400],
+                          x_value_list=x_value_list,
+                          y_value_list=y_value_list,
+                          figsize=(15, 5),
+                          figure_output_path=self.figure_output_path,
+                          title="Burgers_equation",
+                          xlabel="time",
+                          ylabel="position"
+                          )
+        two_dim_curve_gif_func(data_matrix=self.result_matrix,
+                               x_value_list=x_value_list,
+                               y_value_list=y_value_list,
+                               figure_size=(10, 10),
+                               split_alone_axis=1,
+                               gif_frame_num=150,
+                               title="Burgers_equation",
+                               xlabel="x",
+                               ylabel="u(x, t)",
+                               gif_output_path=self.gif_output_path)
 
     def sampling(self, boundary_num, initial_num, common_num, seed=None):
         x_range = [-self.box_l / 2, self.box_l / 2]
