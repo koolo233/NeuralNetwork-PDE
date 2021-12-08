@@ -5,7 +5,7 @@ input_dims: 2
 output_dims: 1
 # ------------------- data ------------------- #
 # box length(calculate area)
-box_l: 2
+cal_x_range: [-1, 1]
 # calculate time
 time_total: 1
 # time step

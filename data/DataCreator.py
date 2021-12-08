@@ -33,8 +33,9 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
     def __init__(self, data_conf):
         super(OneDHeatTransferEquationDataCreator, self).__init__()
 
+        self.conf = data_conf
         # cal area length
-        self.box_l = data_conf["box_l"]
+        self.cal_x_range = data_conf["cal_x_range"]
         # cal time
         self.time_total = data_conf["time_total"]
         # time step
@@ -45,7 +46,7 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
         # time discrete num
         self.time_n = int(self.time_total / self.delta_time)
         # space discrete num
-        self.space_n = int(self.box_l / self.delta_x)
+        self.space_n = int((self.cal_x_range[1] - self.cal_x_range[0]) / self.delta_x)
 
         # result matrix
         self.result_matrix = None
@@ -56,59 +57,49 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
         # output
         self.figure_output_path = os.path.join(data_conf["figure_output_root"],
                                                data_conf["numerical_figure_output_name"])
+        self.gif_output_path = os.path.join(data_conf["figure_output_root"],
+                                            data_conf["numerical_gif_output_name"])
 
     def _data_init(self):
-        self.result_matrix = np.zeros((self.space_n, self.time_n))
+        self.result_matrix = np.zeros((self.space_n, self.time_n)).astype(np.float32)
 
-        # init wave
-        self.result_matrix[:, 0] = -np.sin(np.pi * np.linspace(-self.box_l / 2, self.box_l / 2, self.space_n))
+        # init
+        self.result_matrix[:, 0] = 200
 
     def iter_func(self):
         pass
 
     def plot_func(self, plot_figure=False, save_figure=False):
-        # plot
-
-        plt.figure(figsize=(10, 5), dpi=150)
-
-        draw_time_list = np.linspace(0, self.time_n - 1, min(400, self.time_n)).astype(np.int32)
-        draw_position_list = np.linspace(0, self.space_n - 1, min(400, self.space_n)).astype(np.int32)
-        phi_matrix_draw = self.result_matrix[draw_position_list, :][:, draw_time_list]
-
-        time_list = np.linspace(0, self.time_total, len(draw_time_list))
-        position_list = np.linspace(-self.box_l / 2, self.box_l / 2, len(draw_position_list))
-
-        position_labels = np.around(np.linspace(-self.box_l / 2, self.box_l / 2, 4), 1)
-        # the index position of the tick labels
-        position_ticks = list()
-        for label in position_labels:
-            idx_pos = len(position_list) - np.argmin(np.abs(label - position_list))
-            position_ticks.append(idx_pos)
-
-        time_labels = np.around(np.linspace(0, self.time_total, 4), 1)
-        time_ticks = list()
-        for label in time_labels:
-            idx_pos = np.argmin(np.abs(label - time_list))
-            time_ticks.append(idx_pos)
-
-        ax = sns.heatmap(phi_matrix_draw, annot=False, cmap='rainbow')
-        ax.set_xlabel("time")
-        ax.set_ylabel("position")
-        ax.set_yticks(position_ticks)
-        ax.set_xticks(time_ticks)
-        ax.set_title("real part of wave function —— time")
-        ax.set_xticklabels(time_labels)
-        ax.set_yticklabels(position_labels)
-
-        if save_figure:
-            plt.savefig(self.figure_output_path)
-        if plot_figure:
-            plt.show()
+        x_value_list = np.linspace(0, self.time_total, self.time_n)
+        y_value_list = np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)
+        heatmap_plot_func(data_matrix=self.result_matrix,
+                          draw_size=[400, 400],
+                          x_value_list=x_value_list,
+                          y_value_list=y_value_list,
+                          figsize=(15, 5),
+                          figure_output_path=self.figure_output_path,
+                          title=self.conf["func_name"],
+                          xlabel="time",
+                          ylabel="position"
+                          )
+        two_dim_curve_gif_func(data_matrix=self.result_matrix,
+                               x_value_list=x_value_list,
+                               y_value_list=y_value_list,
+                               figure_size=(10, 10),
+                               split_alone_axis=1,
+                               gif_frame_num=150,
+                               title=self.conf["func_name"],
+                               xlabel="x",
+                               ylabel="u(x, t)",
+                               gif_output_path=self.gif_output_path,
+                               figure_dpi=100,
+                               x_limits="fixed",
+                               y_limits="fixed"
+                               )
 
     def sampling(self, boundary_num, initial_num, common_num, seed=None):
-        x_range = [-self.box_l / 2, self.box_l / 2]
         t_range = [0, self.time_total]
-        data_dict = sampling_func(self.result_matrix, t_range, x_range, seed=seed,
+        data_dict = sampling_func(self.result_matrix, t_range, self.cal_x_range, seed=seed,
                                   boundary_num=boundary_num,
                                   initial_num=initial_num,
                                   common_num=common_num, imag=False)
@@ -121,7 +112,7 @@ class BurgersEquationDataCreator(BasicDataCreator):
         super(BurgersEquationDataCreator, self).__init__()
 
         # cal area length
-        self.box_l = data_conf["box_l"]
+        self.cal_x_range = data_conf["cal_x_range"]
         # cal time
         self.time_total = data_conf["time_total"]
         # time step
@@ -132,7 +123,7 @@ class BurgersEquationDataCreator(BasicDataCreator):
         # time discrete num
         self.time_n = int(self.time_total / self.delta_time)
         # space discrete num
-        self.space_n = int(self.box_l / self.delta_x)
+        self.space_n = int((self.cal_x_range[1] - self.cal_x_range[0]) / self.delta_x)
 
         # result matrix
         self.result_matrix = None
@@ -150,14 +141,14 @@ class BurgersEquationDataCreator(BasicDataCreator):
         self.result_matrix = np.zeros((self.space_n, self.time_n))
 
         # init wave
-        self.result_matrix[:, 0] = -np.sin(np.pi * np.linspace(-self.box_l / 2, self.box_l / 2, self.space_n))
+        self.result_matrix[:, 0] = -np.sin(np.pi * np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n))
 
     def iter_func(self):
         pass
 
     def plot_func(self, plot_figure=False, save_figure=False):
         x_value_list = np.linspace(0, self.time_total, self.time_n)
-        y_value_list = np.linspace(-self.box_l/2, self.box_l/2, self.space_n)
+        y_value_list = np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)
         heatmap_plot_func(data_matrix=self.result_matrix,
                           draw_size=[400, 400],
                           x_value_list=x_value_list,
@@ -166,7 +157,8 @@ class BurgersEquationDataCreator(BasicDataCreator):
                           figure_output_path=self.figure_output_path,
                           title="Burgers_equation",
                           xlabel="time",
-                          ylabel="position"
+                          ylabel="position",
+                          x_ticks_num=3,
                           )
         two_dim_curve_gif_func(data_matrix=self.result_matrix,
                                x_value_list=x_value_list,
@@ -177,12 +169,15 @@ class BurgersEquationDataCreator(BasicDataCreator):
                                title="Burgers_equation",
                                xlabel="x",
                                ylabel="u(x, t)",
-                               gif_output_path=self.gif_output_path)
+                               gif_output_path=self.gif_output_path,
+                               figure_dpi=100,
+                               x_limits="fixed",
+                               y_limits="fixed"
+                               )
 
     def sampling(self, boundary_num, initial_num, common_num, seed=None):
-        x_range = [-self.box_l / 2, self.box_l / 2]
         t_range = [0, self.time_total]
-        data_dict = sampling_func(self.result_matrix, t_range, x_range, seed=seed,
+        data_dict = sampling_func(self.result_matrix, t_range, self.cal_x_range, seed=seed,
                                   boundary_num=boundary_num,
                                   initial_num=initial_num,
                                   common_num=common_num, imag=False)

@@ -191,7 +191,7 @@ class BurgersEquationPINN(object):
 
             # pred output init
             true_output_matrix = self.data_creator.result_matrix
-            x_position_list = np.linspace(-self.data_creator.box_l / 2, self.data_creator.box_l / 2,
+            x_position_list = np.linspace(self.data_creator.cal_x_range[0], self.data_creator.cal_x_range[1],
                                           self.data_creator.space_n).reshape((-1, 1))
             t_position_list = np.linspace(0, self.data_creator.time_total, self.data_creator.time_n)
 

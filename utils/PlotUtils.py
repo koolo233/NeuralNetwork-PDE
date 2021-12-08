@@ -110,6 +110,8 @@ def two_dim_curve_gif_func(data_matrix,
                            title="",
                            xlabel="x",
                            ylabel="y",
+                           x_limits="auto",
+                           y_limits="auto",
                            gif_output_path=None,
                            figure_dpi=150
                            ):
@@ -125,6 +127,8 @@ def two_dim_curve_gif_func(data_matrix,
     :param title: 标题
     :param xlabel: x轴名称
     :param ylabel: y轴名称
+    :param x_limits: x轴坐标范围(可传入值、自动模式或者固定模式) "auto", "fixed"
+    :param y_limits: y轴坐标范围
     :param gif_output_path: 保存路径
     :param figure_dpi: 输出gif的分辨率
     :return:
@@ -137,7 +141,6 @@ def two_dim_curve_gif_func(data_matrix,
         total_frame = gif_frame_num
 
     frame_index_list = np.linspace(0, data_matrix.shape[split_alone_axis]-1, total_frame).astype(np.int32)
-    plt.figure(figsize=figure_size, dpi=figure_dpi)
 
     # create temp output path
     temp_figure_output_root = os.path.join(os.path.split(gif_output_path)[0], "temp")
@@ -145,16 +148,46 @@ def two_dim_curve_gif_func(data_matrix,
         shutil.rmtree(temp_figure_output_root)
     os.makedirs(temp_figure_output_root)
 
+    plt.figure(figsize=figure_size, dpi=figure_dpi)
+
     for i, _frame in enumerate(frame_index_list):
         plt.cla()
         plt.clf()
 
+        if len(y_limits) == 2:
+            plt.ylim(y_limits)
+        elif y_limits == "auto":
+            pass
+        elif y_limits == "fixed":
+            y_min = np.min(data_matrix)
+            y_max = np.max(data_matrix)
+            plt.ylim(y_min - (y_max - y_min) * 0.1, y_max + (y_max - y_min) * 0.1)
+
         if split_alone_axis == 0:
             temp_frame = data_matrix[_frame, :]
             plt.plot(x_value_list, temp_frame)
+
+            if len(x_limits) == 2:
+                plt.xlim(x_limits)
+            elif x_limits == "auto":
+                pass
+            elif x_limits == "fixed":
+                x_min = np.min(x_value_list)
+                x_max = np.max(x_value_list)
+                plt.xlim(x_min-(x_max-x_min)*0.1, x_max+(x_max-x_min)*0.1)
+
         else:
             temp_frame = data_matrix[:, _frame]
             plt.plot(y_value_list, temp_frame)
+
+            if len(x_limits) == 2:
+                plt.xlim(x_limits)
+            elif x_limits == "auto":
+                pass
+            elif x_limits == "fixed":
+                x_min = np.min(y_value_list)
+                x_max = np.max(y_value_list)
+                plt.xlim(x_min-(x_max-x_min)*0.1, x_max+(x_max-x_min)*0.1)
 
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
