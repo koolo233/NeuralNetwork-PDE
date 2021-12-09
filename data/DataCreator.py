@@ -28,6 +28,87 @@ class BasicDataCreator(object):
         pass
 
 
+class OneDAllenCahnEquationDataCreator(BasicDataCreator):
+
+    def __init__(self, data_conf):
+        super(OneDAllenCahnEquationDataCreator, self).__init__()
+
+        self.conf = data_conf
+        # cal area length
+        self.cal_x_range = data_conf["cal_x_range"]
+        # cal time
+        self.time_total = data_conf["time_total"]
+        # time step
+        self.delta_time = data_conf["delta_time"]
+        # space step
+        self.delta_x = data_conf["delta_x"]
+
+        # time discrete num
+        self.time_n = int(self.time_total / self.delta_time)
+        # space discrete num
+        self.space_n = int((self.cal_x_range[1] - self.cal_x_range[0]) / self.delta_x)
+
+        # result matrix
+        self.result_matrix = None
+
+        # data init
+        self._data_init()
+
+        # output
+        self.figure_output_path = os.path.join(data_conf["figure_output_root"],
+                                               data_conf["numerical_figure_output_name"])
+        self.gif_output_path = os.path.join(data_conf["figure_output_root"],
+                                            data_conf["numerical_gif_output_name"])
+
+    def _data_init(self):
+        self.result_matrix = np.zeros((self.space_n, self.time_n)).astype(np.float32)
+
+        # init
+        x_list = np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)
+        self.result_matrix[:, 0] = x_list ** 2 * np.cos(np.pi * x_list)
+
+    def iter_func(self):
+        pass
+
+    def plot_func(self, plot_figure=False, save_figure=False):
+        x_value_list = np.linspace(0, self.time_total, self.time_n)
+        y_value_list = np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)
+        heatmap_plot_func(data_matrix=self.result_matrix,
+                          draw_size=[400, 400],
+                          x_value_list=x_value_list,
+                          y_value_list=y_value_list,
+                          figsize=(15, 5),
+                          figure_output_path=self.figure_output_path,
+                          title=self.conf["func_name"],
+                          xlabel="time",
+                          ylabel="position"
+                          )
+        two_dim_curve_gif_func(data_matrix=self.result_matrix,
+                               x_value_list=x_value_list,
+                               y_value_list=y_value_list,
+                               figure_size=(10, 10),
+                               split_alone_axis=1,
+                               gif_frame_num=150,
+                               title=self.conf["func_name"],
+                               xlabel="x",
+                               ylabel="u(x, t)",
+                               gif_output_path=self.gif_output_path,
+                               figure_dpi=100,
+                               x_limits="fixed",
+                               y_limits="fixed"
+                               )
+
+    def sampling(self, boundary_num, initial_num, common_num, seed=None, periodic_boundary=False):
+        t_range = [0, self.time_total]
+        data_dict = sampling_func(self.result_matrix, t_range, self.cal_x_range, seed=seed,
+                                  boundary_num=boundary_num,
+                                  initial_num=initial_num,
+                                  common_num=common_num,
+                                  imag=False,
+                                  periodic_boundary=periodic_boundary)
+        return data_dict
+
+
 class OneDHeatTransferEquationDataCreator(BasicDataCreator):
 
     def __init__(self, data_conf):
@@ -141,7 +222,8 @@ class BurgersEquationDataCreator(BasicDataCreator):
         self.result_matrix = np.zeros((self.space_n, self.time_n))
 
         # init wave
-        self.result_matrix[:, 0] = -np.sin(np.pi * np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n))
+        x_list = np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)
+        self.result_matrix[:, 0] = -np.sin(np.pi * x_list)
 
     def iter_func(self):
         pass

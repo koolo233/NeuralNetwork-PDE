@@ -1,11 +1,11 @@
 # ------------------- basic -------------------- #
-func_name: "1d_heat_transfer_equation"
+func_name: &func_name "Allen_Cahn_Equation_with_loss_weight_100_1_1"
 seed: 1024
 input_dims: 2
 output_dims: 1
 # ------------------- data ------------------- #
 # box length(calculate area)
-cal_x_range: [0, 1]
+cal_x_range: [-1, 1]
 # calculate time
 time_total: 1
 # time step
@@ -14,11 +14,11 @@ delta_time: 0.0001
 delta_x: 0.01
 
 # number of boundary data sampling
-boundary_num: 70
+boundary_num: 100
 # number of initial data sampling
-initial_num: 30
+initial_num: 100
 # number of common data sampling
-common_num: 20000
+common_num: 10000
 
 # data loader batch size
 # "-1" means loader all data
@@ -27,29 +27,36 @@ initial_batch_size: -1
 common_batch_size: -1
 
 # ------------------- model ------------------- #
-model_layers: [20, 20, 20, 20, 20, 20, 20, 20]
-load_weight: "False"
+model_layers: [200, 200, 200, 200]
+load_weight: false
+periodic_boundary: True
+
+# Allen Cahn function
+# u_t = Gamma u_{xx} - Beta (u^2-1)u
+Gamma: 0.0001
+Beta: 5
 
 # ------------------- train ------------------- #
-max_epochs: 5000
+TrainLoop: 1
+max_epochs: 0
 
 # optimizer
 lr: 1
 max_iter: 50000
 max_eval: 50000
-history_size: 100
+history_size: 50
 tolerance_grad: 1e-5
 line_search_fn: "strong_wolfe"
 
 # ------------------- save ------------------- #
-numerical_plot: "False"
-PINN_plot: "True"
+numerical_plot: false
+PINN_plot: True
 
 figure_output_root: "./output/plots"
 model_output_root: "./output/weights"
 
-numerical_figure_output_name: "1d_heat_transfer_equation_numerical.png"
-numerical_gif_output_name: "1d_heat_transfer_equation_numerical.gif"
-pinn_figure_output_name: "1d_heat_transfer_equation_PINN.png"
-pinn_gif_output_name: "1d_heat_transfer_equation_PINN.gif"
-model_output_name: "1d_heat_transfer_equation_pinn.pth"
+numerical_figure_output_name: !join [*func_name, "_numerical.png"]
+numerical_gif_output_name: !join [*func_name, "_numerical.gif"]
+pinn_figure_output_name: !join [*func_name, "_PINN.png"]
+pinn_gif_output_name: !join [*func_name, "_PINN.gif"]
+model_output_name: !join [*func_name, "_pinn.pth"]
