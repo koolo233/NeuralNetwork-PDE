@@ -70,7 +70,7 @@ class OneDAllenCahnEquationDataCreator(BasicDataCreator):
     def iter_func(self):
         pass
 
-    def plot_func(self, plot_figure=False, save_figure=False):
+    def plot_func(self, plot_figure=False, save_figure=False, cmap="rainbow"):
         x_value_list = np.linspace(0, self.time_total, self.time_n)
         y_value_list = np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)
         heatmap_plot_func(data_matrix=self.result_matrix,
@@ -81,7 +81,8 @@ class OneDAllenCahnEquationDataCreator(BasicDataCreator):
                           figure_output_path=self.figure_output_path,
                           title=self.conf["func_name"],
                           xlabel="time",
-                          ylabel="position"
+                          ylabel="position",
+                          cmap=cmap
                           )
         two_dim_curve_gif_func(data_matrix=self.result_matrix,
                                x_value_list=x_value_list,

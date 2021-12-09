@@ -40,10 +40,10 @@ fh.setFormatter(basic_format)
 logger.addHandler(fh)
 
 
-class BurgersEquationPINN(object):
+class OneDHeatTransferPINN(object):
 
     def __init__(self, conf, load_weight_path=None):
-        super(BurgersEquationPINN, self).__init__()
+        super(OneDHeatTransferPINN, self).__init__()
 
         logger.info("PINN for {} \n \n \n".format(conf["func_name"]))
         logger.info("hyps list {}".format(conf))
@@ -262,7 +262,7 @@ class BurgersEquationPINN(object):
 if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_1d_heat_transfer_equation.yaml"), Loader=yaml.FullLoader)
     weight_path = r"./output/weights/1d_heat_transfer_equation_pinn.pth"
-    main_ = BurgersEquationPINN(_conf, weight_path)
+    main_ = OneDHeatTransferPINN(_conf, weight_path)
     main_.train()
     if _conf["PINN_plot"] == "True":
         main_.pred_and_valuation()

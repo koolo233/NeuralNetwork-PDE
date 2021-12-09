@@ -173,12 +173,7 @@ class BurgersEquationPINN(object):
         self.pinn_model.train()
 
         for i in range(self.conf["TrainLoop"]):
-            logger.info("train with L-BFGS")
-            self.adam_ = False
-            self.optimizer.step(self.loss_func)
-            logger.info("L-BFGS optimize done ...")
-
-            adam_optimier = optim.Adam(self.pinn_model.parameters(), lr=1e-3/np.power(5, i))
+            adam_optimier = optim.Adam(self.pinn_model.parameters(), lr=1e-3 / np.power(5, i))
             logger.info("train with Adam optimizer")
             self.adam_ = True
             for epoch in range(1, self.max_adam_epochs + 1):
@@ -186,6 +181,11 @@ class BurgersEquationPINN(object):
                 self.loss_func()
                 adam_optimier.step()
             logger.info("Adam optimize done ...")
+
+            logger.info("train with L-BFGS")
+            self.adam_ = False
+            self.optimizer.step(self.loss_func)
+            logger.info("L-BFGS optimize done ...")
 
         over_train_time = time.time()
         logger.info("train over ...")
@@ -261,7 +261,7 @@ class BurgersEquationPINN(object):
 
             # pred output init
             true_output_matrix = self.data_creator.result_matrix
-            x_position_list = np.linspace(-self.data_creator.cal_x_range[0], self.data_creator.cal_x_range[1],
+            x_position_list = np.linspace(self.data_creator.cal_x_range[0], self.data_creator.cal_x_range[1],
                                           self.data_creator.space_n).reshape((-1, 1))
             t_position_list = np.linspace(0, self.data_creator.time_total, self.data_creator.time_n)
 
@@ -271,6 +271,7 @@ class BurgersEquationPINN(object):
             x_position_tensor = torch.from_numpy(x_position_list).type(torch.float32).to(self.device)
             # pred
             begin_pred_time = time.time()
+
             for t, time_point in enumerate(t_position_list):
 
                 # create input t tensor
@@ -306,12 +307,12 @@ class BurgersEquationPINN(object):
         self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
                                                          self.conf["pinn_gif_output_name"])
         self.data_creator.result_matrix = pred_output_matrix.copy()
-        self.data_creator.plot_func(save_figure=True)
+        if self.conf["PINN_plot"]:
+            self.data_creator.plot_func(save_figure=True, cmap="seismic")
 
 
 if __name__ == "__main__":
     weight_path = os.path.join(_conf["model_output_root"], _conf["model_output_name"])
     main_ = BurgersEquationPINN(_conf, weight_path)
-    main_.train()
-    if _conf["PINN_plot"]:
-        main_.pred_and_valuation()
+    # main_.train()
+    main_.pred_and_valuation()

@@ -28,7 +28,7 @@ common_batch_size: -1
 
 # ------------------- model ------------------- #
 model_layers: [200, 200, 200, 200]
-load_weight: false
+load_weight: True
 periodic_boundary: True
 
 # Allen Cahn function
@@ -38,7 +38,7 @@ Beta: 5
 
 # ------------------- train ------------------- #
 TrainLoop: 1
-max_epochs: 0
+max_epochs: 5000
 
 # optimizer
 lr: 1
