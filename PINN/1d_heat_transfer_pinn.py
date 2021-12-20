@@ -5,6 +5,9 @@
 # @Time       : 2021/12/6 21:48
 import os
 import sys
+
+import matplotlib.pyplot as plt
+
 sys.path.append(os.curdir)
 
 import time
@@ -142,12 +145,13 @@ class OneDHeatTransferPINN(object):
         self.pinn_model.train()
 
         for i in range(4):
+
             logger.info("train with L-BFGS")
             self.adam_ = False
             self.optimizer.step(self.loss_func)
             logger.info("L-BFGS optimize done ...")
 
-            adam_optimier = optim.Adam(self.pinn_model.parameters(), lr=2e-4/np.power(5, i))
+            adam_optimier = optim.Adam(self.pinn_model.parameters(), lr=2e-3/np.power(5, i))
             logger.info("train with Adam optimizer")
             self.adam_ = True
             for epoch in range(1, self.max_adam_epochs + 1):
@@ -155,6 +159,11 @@ class OneDHeatTransferPINN(object):
                 self.loss_func()
                 adam_optimier.step()
             logger.info("Adam optimize done ...")
+
+            logger.info("train with L-BFGS")
+            self.adam_ = False
+            self.optimizer.step(self.loss_func)
+            logger.info("L-BFGS optimize done ...")
 
         over_train_time = time.time()
         logger.info("train over ...")
@@ -189,7 +198,7 @@ class OneDHeatTransferPINN(object):
         loss_u = torch.mean((u_pred - self.u_exact) ** 2)
         loss_f = torch.mean(pde_output ** 2)
 
-        total_loss = loss_f + loss_u
+        total_loss = loss_f + loss_u * 100
 
         total_loss.backward()
 
@@ -204,7 +213,7 @@ class OneDHeatTransferPINN(object):
                         "pde function loss:{:.5e}".format(loss_u.item(), loss_f.item()))
         return total_loss
 
-    def pred_and_valuation(self):
+    def pred(self):
         logger.info("begin pred ...")
         with torch.no_grad():
             self.pinn_model.eval()
@@ -237,13 +246,58 @@ class OneDHeatTransferPINN(object):
             logger.info("pred done ...")
             logger.info("using {:.5f}s ...".format(over_pred_time - begin_pred_time))
 
-        # valuation
-        l1_norm = np.linalg.norm(pred_output_matrix.reshape(-1) - true_output_matrix.reshape(-1), 1)
-        l2_norm = np.linalg.norm(pred_output_matrix.reshape(-1) - true_output_matrix.reshape(-1))
+        # self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
+        #                                                     self.conf["pinn_figure_output_name"])
+        # self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
+        #                                                  self.conf["pinn_gif_output_name"])
+        # self.data_creator.result_matrix = pred_output_matrix.copy()
+        # self.data_creator.plot_func(save_figure=True)
+        #
+        # # different figure
+        # different_figure = np.abs(pred_output_matrix - true_output_matrix)
+        #
+        # self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
+        #                                                     self.conf["different_figure_output_name"])
+        # self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
+        #                                                  self.conf["different_gif_output_name"])
+        # self.data_creator.result_matrix = different_figure.copy()
+        # self.data_creator.plot_func(save_figure=True)
 
-        max_error = np.max(np.abs(pred_output_matrix - true_output_matrix))
-        min_error = np.min(np.abs(pred_output_matrix - true_output_matrix))
-        average_error = np.average(np.abs(pred_output_matrix - true_output_matrix))
+        # 直接对比
+        # 取时间为 0， 0.25, 0.5, 0.75四个时间点
+        # time_points = [0, int(0.25/self.conf["delta_time"]),
+        #                int(0.5/self.conf["delta_time"]),
+        #                int(0.75/self.conf["delta_time"])]
+        # plt.rcParams["font.sans-serif"] = ["SimHei"]
+        # plt.figure(figsize=(10, 10))
+        # x_value_list = np.linspace(self.conf["cal_x_range"][0],
+        #                            self.conf["cal_x_range"][1], true_output_matrix.shape[0])
+        # for _time in time_points:
+        #     true_vector = true_output_matrix[:, _time]
+        #     pred_vector = pred_output_matrix[:, _time]
+        #     plt.clf()
+        #     plt.cla()
+        #     plt.title("t={}".format(np.round(_time * self.conf["delta_time"], 2)))
+        #     plt.xlabel("x")
+        #     plt.ylabel("u(t, x)")
+        #     plt.ylim(-1, 200)
+        #     plt.plot(x_value_list, pred_vector, label="数值计算结果", linewidth=2)
+        #     plt.plot(x_value_list, true_vector, label="PINN预测结果", linewidth=2)
+        #     plt.legend()
+        #     plt.savefig("./output/plots/1d_heat_transfer_pinn_time_{}.png".format(np.round(_time *
+        #                                                                                    self.conf["delta_time"], 2)))
+        return pred_output_matrix
+
+    def valuation_(self, pred_matrix):
+
+        true_output_matrix = self.data_creator.result_matrix
+        # valuation
+        l1_norm = np.linalg.norm(pred_matrix.reshape(-1) - true_output_matrix.reshape(-1), 1)
+        l2_norm = np.linalg.norm(pred_matrix.reshape(-1) - true_output_matrix.reshape(-1))
+
+        max_error = np.max(np.abs(pred_matrix - true_output_matrix))
+        min_error = np.min(np.abs(pred_matrix - true_output_matrix))
+        average_error = np.average(np.abs(pred_matrix - true_output_matrix))
 
         logger.info("l1 norm {:.7f}".format(l1_norm))
         logger.info("l2 norm {:.7f}".format(l2_norm))
@@ -251,21 +305,62 @@ class OneDHeatTransferPINN(object):
         logger.info("min error {:.7f}".format(min_error))
         logger.info("average error {:.7f}".format(average_error))
 
-        self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
-                                                            self.conf["pinn_figure_output_name"])
-        self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
-                                                         self.conf["pinn_gif_output_name"])
-        self.data_creator.result_matrix = pred_output_matrix.copy()
-        self.data_creator.plot_func(save_figure=True)
+        return average_error
 
 
 if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_1d_heat_transfer_equation.yaml"), Loader=yaml.FullLoader)
     weight_path = r"./output/weights/1d_heat_transfer_equation_pinn.pth"
-    main_ = OneDHeatTransferPINN(_conf, weight_path)
-    main_.train()
-    if _conf["PINN_plot"] == "True":
-        main_.pred_and_valuation()
+
+    layer_num_list = [2, 4, 6, 8]
+    neural_num_list = [10, 20, 40]
+
+    boundary_initial_num = 200
+    common_num = 16000
+    boundary_num = int(boundary_initial_num * 0.7)
+    initial_num = int(boundary_initial_num * 0.3)
+
+    for layer_conf in layer_num_list:
+        for neural_num_conf in neural_num_list:
+            logger.info("\n \n \n")
+            logger.info("layer_conf {}".format(layer_conf))
+            logger.info("neural_num_conf {}".format(neural_num_conf))
+
+            _conf["model_layers"] = np.repeat(neural_num_conf, layer_conf)
+            logger.info("model_layers {}".format(_conf["model_layers"]))
+
+            main_ = OneDHeatTransferPINN(_conf, weight_path)
+            main_.train()
+            pred_matrix_ = main_.pred()
 
 
-
+    # common_num_list = [4000, 8000, 12000, 16000, 20000]
+    # boundary_initial_num_list = [100, 140, 180, 220]
+    #
+    # error_matrix = np.zeros((len(common_num_list), len(boundary_initial_num_list)))
+    # for i, boundary_initial_num in enumerate(boundary_initial_num_list):
+    #     for j, common_num in enumerate(common_num_list):
+    #
+    #         train_ = False
+    #         if (boundary_initial_num == 180 and common_num == 20000) or (boundary_initial_num == 140 and common_num == 12000):
+    #             train_ = True
+    #         if train_:
+    #             boundary_num = int(boundary_initial_num * 0.7)
+    #             initial_num = int(boundary_initial_num * 0.3)
+    #
+    #             logger.info("\n \n \n")
+    #             logger.info("common_num {}".format(common_num))
+    #             logger.info("initial_num {}".format(initial_num))
+    #             logger.info("boundary_num {}".format(boundary_num))
+    #
+    #             _conf["boundary_num"] = boundary_num
+    #             _conf["initial_num"] = initial_num
+    #             _conf["common_num"] = common_num
+    #
+    #             main_ = OneDHeatTransferPINN(_conf, weight_path)
+    #             main_.train()
+    #             # if _conf["PINN_plot"] == "True":
+    #             pred_matrix_ = main_.pred()
+    #             error_matrix[j][i] = main_.valuation_(pred_matrix_)
+    #
+    # logger.info("error matrix".format(error_matrix))

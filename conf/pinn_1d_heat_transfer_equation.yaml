@@ -27,23 +27,23 @@ initial_batch_size: -1
 common_batch_size: -1
 
 # ------------------- model ------------------- #
-model_layers: [20, 20, 20, 20, 20, 20, 20, 20]
+model_layers: [20, 20, 20, 20, 20, 20, 20, 20, 20]
 load_weight: "False"
 
 # ------------------- train ------------------- #
 max_epochs: 5000
 
 # optimizer
-lr: 1
+lr: 0.2
 max_iter: 50000
 max_eval: 50000
-history_size: 100
+history_size: 50
 tolerance_grad: 1e-5
 line_search_fn: "strong_wolfe"
 
 # ------------------- save ------------------- #
 numerical_plot: "False"
-PINN_plot: "True"
+PINN_plot: "False"
 
 figure_output_root: "./output/plots"
 model_output_root: "./output/weights"
@@ -53,3 +53,6 @@ numerical_gif_output_name: "1d_heat_transfer_equation_numerical.gif"
 pinn_figure_output_name: "1d_heat_transfer_equation_PINN.png"
 pinn_gif_output_name: "1d_heat_transfer_equation_PINN.gif"
 model_output_name: "1d_heat_transfer_equation_pinn.pth"
+
+different_figure_output_name: "1d_heat_transfer_equation_different.png"
+different_gif_output_name: "1d_heat_transfer_equation_different.gif"

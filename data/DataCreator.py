@@ -132,6 +132,10 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
 
         # result matrix
         self.result_matrix = None
+        # param matrix
+        self.parm_matrix = None
+        # k matrix
+        self.k_vector_matrix = None
 
         # data init
         self._data_init()
@@ -147,9 +151,45 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
 
         # init
         self.result_matrix[:, 0] = 200
+        self.result_matrix[-1, 0] = 0
+        self.result_matrix[0, 0] = 0
+
+        # def A matrix
+        self.parm_matrix = -2 * np.eye(int(self.space_n)) + \
+                           np.eye(int(self.space_n), k=1) + \
+                           np.eye(int(self.space_n), k=-1)
+        self.parm_matrix[0, :] = 0
+        self.parm_matrix[-1, :] = 0
+
+        # def k1, k2, k3, k4
+        # k1 = k_vector_matrix[:, 0]
+        # k2 = k_vector_matrix[:, 1]
+        # k3 = k_vector_matrix[:, 2]
+        # k4 = k_vector_matrix[:, 3]
+        self.k_vector_matrix = np.zeros((int(self.space_n), 4))
 
     def iter_func(self):
-        pass
+        constant_ = 0.1 / np.power(self.delta_x, 2)
+        for i in range(self.time_n - 1):
+            # k1
+            self.k_vector_matrix[:, 0] = constant_ * np.matmul(self.parm_matrix, self.result_matrix[:, i])
+            # k2
+            self.k_vector_matrix[:, 1] = constant_ * (
+                np.matmul(self.parm_matrix, self.result_matrix[:, i] +
+                          (self.delta_time / 2) * self.k_vector_matrix[:, 0]))
+            # k3
+            self.k_vector_matrix[:, 2] = constant_ * (
+                np.matmul(self.parm_matrix, self.result_matrix[:, i] +
+                          (self.delta_time / 2) * self.k_vector_matrix[:, 1]))
+            # k4
+            self.k_vector_matrix[:, 3] = constant_ * (
+                np.matmul(self.parm_matrix, self.result_matrix[:, i] +
+                          self.delta_time * self.k_vector_matrix[:, 2]))
+            # if i % 1000 == 0:
+            #     print(np.max(k_vector_matrix))
+            self.result_matrix[:, i + 1] = self.result_matrix[:, i] + (self.delta_time / 6) * (
+                    self.k_vector_matrix[:, 0] + 2 * self.k_vector_matrix[:, 1] +
+                    2 * self.k_vector_matrix[:, 2] + self.k_vector_matrix[:, 3])
 
     def plot_func(self, plot_figure=False, save_figure=False):
         x_value_list = np.linspace(0, self.time_total, self.time_n)
