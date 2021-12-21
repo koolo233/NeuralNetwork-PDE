@@ -312,8 +312,8 @@ if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_1d_heat_transfer_equation.yaml"), Loader=yaml.FullLoader)
     weight_path = r"./output/weights/1d_heat_transfer_equation_pinn.pth"
 
-    layer_num_list = [2, 4, 6, 8]
-    neural_num_list = [10, 20, 40]
+    layer_num_list = [6]
+    neural_num_list = [40]
 
     boundary_initial_num = 200
     common_num = 16000
@@ -332,6 +332,7 @@ if __name__ == "__main__":
             main_ = OneDHeatTransferPINN(_conf, weight_path)
             main_.train()
             pred_matrix_ = main_.pred()
+            main_.valuation_(pred_matrix_)
 
 
     # common_num_list = [4000, 8000, 12000, 16000, 20000]
