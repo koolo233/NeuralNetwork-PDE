@@ -141,6 +141,9 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
         self._data_init()
 
         # output
+
+        if not os.path.exists(data_conf["figure_output_root"]):
+            os.makedirs(data_conf["figure_output_root"])
         self.figure_output_path = os.path.join(data_conf["figure_output_root"],
                                                data_conf["numerical_figure_output_name"])
         self.gif_output_path = os.path.join(data_conf["figure_output_root"],
@@ -150,9 +153,10 @@ class OneDHeatTransferEquationDataCreator(BasicDataCreator):
         self.result_matrix = np.zeros((self.space_n, self.time_n)).astype(np.float32)
 
         # init
-        self.result_matrix[:, 0] = 200
-        self.result_matrix[-1, 0] = 0
-        self.result_matrix[0, 0] = 0
+        self.result_matrix[:, 0] = np.sin(np.pi * np.linspace(self.cal_x_range[0], self.cal_x_range[1], self.space_n)) * 200
+        # self.result_matrix[:, 0] = 200
+        # self.result_matrix[-1, 0] = 0
+        # self.result_matrix[0, 0] = 0
 
         # def A matrix
         self.parm_matrix = -2 * np.eye(int(self.space_n)) + \

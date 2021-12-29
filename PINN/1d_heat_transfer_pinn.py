@@ -135,6 +135,8 @@ class OneDHeatTransferPINN(object):
         # ---------------------------------------- #
         # ----------------- save ----------------- #
         # ---------------------------------------- #
+        if not os.path.exists(conf["model_output_root"]):
+            os.makedirs(conf["model_output_root"])
         self.model_output_path = os.path.join(conf["model_output_root"], conf["model_output_name"])
         self.pinn_val_output_figure = os.path.join(conf["figure_output_root"], conf["pinn_figure_output_name"])
 
@@ -144,7 +146,7 @@ class OneDHeatTransferPINN(object):
 
         self.pinn_model.train()
 
-        for i in range(4):
+        for i in range(1):
 
             logger.info("train with L-BFGS")
             self.adam_ = False
@@ -198,7 +200,7 @@ class OneDHeatTransferPINN(object):
         loss_u = torch.mean((u_pred - self.u_exact) ** 2)
         loss_f = torch.mean(pde_output ** 2)
 
-        total_loss = loss_f + loss_u * 100
+        total_loss = loss_f + loss_u
 
         total_loss.backward()
 
@@ -215,6 +217,11 @@ class OneDHeatTransferPINN(object):
 
     def pred(self):
         logger.info("begin pred ...")
+
+        self.conf["time_total"] = 20
+        self.data_creator = OneDHeatTransferEquationDataCreator(self.conf)
+        self.data_creator.iter_func()
+
         with torch.no_grad():
             self.pinn_model.eval()
 
@@ -227,77 +234,101 @@ class OneDHeatTransferPINN(object):
             pred_output_matrix = np.zeros((int(self.data_creator.space_n),
                                            int(self.data_creator.time_n)))
 
-            x_position_tensor = torch.from_numpy(x_position_list).type(torch.float32).to(self.device)
             # pred
             begin_pred_time = time.time()
-            for t, time_point in enumerate(t_position_list):
 
-                # create input t tensor
-                t_tensor = torch.ones_like(x_position_tensor) * time_point
+            x_position_input, y_position_input = np.meshgrid(x_position_list, t_position_list)
+            x_position_input = torch.from_numpy(x_position_input.reshape(-1, 1)).to(dtype=torch.float32, device=self.device)
+            y_position_input = torch.from_numpy(y_position_input.reshape(-1, 1)).to(dtype=torch.float32, device=self.device)
+            pred_ = self.pinn_model(x_position_input, y_position_input).detach().cpu().numpy()
+            pred_output_matrix = pred_.reshape((len(t_position_list), len(x_position_list))).T
 
-                pred_ = self.pinn_model(x_position_tensor, t_tensor.to(self.device)).detach().cpu().numpy()
 
-                pred_output_matrix[:, t] = np.reshape(pred_.copy(), (-1))
-
-                if t % 1000 == 0:
-                    print(np.max(pred_output_matrix[:, t]), np.min(pred_output_matrix[:, t]))
-                    logger.info("[{}/{}] pred done ...".format(t, len(t_position_list)))
+            # for t, time_point in enumerate(t_position_list):
+            #
+            #     # create input t tensor
+            #     t_tensor = torch.ones_like(x_position_tensor) * time_point
+            #
+            #
+            #
+            #     pred_output_matrix[:, t] = np.reshape(pred_.copy(), (-1))
+            #
+            #     if t % 1000 == 0:
+            #         print(np.max(pred_output_matrix[:, t]), np.min(pred_output_matrix[:, t]))
+            #         logger.info("[{}/{}] pred done ...".format(t, len(t_position_list)))
             over_pred_time = time.time()
             logger.info("pred done ...")
             logger.info("using {:.5f}s ...".format(over_pred_time - begin_pred_time))
 
-        # self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
-        #                                                     self.conf["pinn_figure_output_name"])
-        # self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
-        #                                                  self.conf["pinn_gif_output_name"])
-        # self.data_creator.result_matrix = pred_output_matrix.copy()
-        # self.data_creator.plot_func(save_figure=True)
-        #
-        # # different figure
-        # different_figure = np.abs(pred_output_matrix - true_output_matrix)
-        #
-        # self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
-        #                                                     self.conf["different_figure_output_name"])
-        # self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
-        #                                                  self.conf["different_gif_output_name"])
-        # self.data_creator.result_matrix = different_figure.copy()
-        # self.data_creator.plot_func(save_figure=True)
+        self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
+                                                            self.conf["pinn_figure_output_name"])
+        self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
+                                                         self.conf["pinn_gif_output_name"])
+        self.data_creator.result_matrix = pred_output_matrix.copy()
+        self.data_creator.plot_func(save_figure=True)
+
+        # different figure
+        different_figure = np.abs(pred_output_matrix - true_output_matrix)
+
+        self.data_creator.figure_output_path = os.path.join(self.conf["figure_output_root"],
+                                                            self.conf["different_figure_output_name"])
+        self.data_creator.gif_output_path = os.path.join(self.conf["figure_output_root"],
+                                                         self.conf["different_gif_output_name"])
+        self.data_creator.result_matrix = different_figure.copy()
+        self.data_creator.plot_func(save_figure=True)
 
         # 直接对比
-        # 取时间为 0， 0.25, 0.5, 0.75四个时间点
-        # time_points = [0, int(0.25/self.conf["delta_time"]),
-        #                int(0.5/self.conf["delta_time"]),
-        #                int(0.75/self.conf["delta_time"])]
-        # plt.rcParams["font.sans-serif"] = ["SimHei"]
-        # plt.figure(figsize=(10, 10))
-        # x_value_list = np.linspace(self.conf["cal_x_range"][0],
-        #                            self.conf["cal_x_range"][1], true_output_matrix.shape[0])
-        # for _time in time_points:
-        #     true_vector = true_output_matrix[:, _time]
-        #     pred_vector = pred_output_matrix[:, _time]
-        #     plt.clf()
-        #     plt.cla()
-        #     plt.title("t={}".format(np.round(_time * self.conf["delta_time"], 2)))
-        #     plt.xlabel("x")
-        #     plt.ylabel("u(t, x)")
-        #     plt.ylim(-1, 200)
-        #     plt.plot(x_value_list, pred_vector, label="数值计算结果", linewidth=2)
-        #     plt.plot(x_value_list, true_vector, label="PINN预测结果", linewidth=2)
-        #     plt.legend()
-        #     plt.savefig("./output/plots/1d_heat_transfer_pinn_time_{}.png".format(np.round(_time *
-        #                                                                                    self.conf["delta_time"], 2)))
+        # 取时间为 0， 0.25, 0.5, 0.75, 1.5, 5, 10, 15, 19四个时间点
+        time_points = [0, int(0.25/self.conf["delta_time"]),
+                       int(0.5/self.conf["delta_time"]),
+                       int(0.75/self.conf["delta_time"]),
+                       int(1.5/self.conf["delta_time"]),
+                       int(5/self.conf["delta_time"]),
+                       int(10/self.conf["delta_time"]),
+                       int(15/self.conf["delta_time"]),
+                       int(19/self.conf["delta_time"])]
+
+        plt.rcParams['axes.unicode_minus'] = False
+        plt.rcParams["font.sans-serif"] = ["SimHei"]
+        plt.figure(figsize=(10, 10))
+        x_value_list = np.linspace(self.conf["cal_x_range"][0],
+                                   self.conf["cal_x_range"][1], true_output_matrix.shape[0])
+        for _time in time_points:
+            true_vector = true_output_matrix[:, _time]
+            pred_vector = pred_output_matrix[:, _time]
+            plt.clf()
+            plt.cla()
+            plt.title("t={}".format(np.round(_time * self.conf["delta_time"], 2)))
+            plt.xlabel("x")
+            plt.ylabel("u(t, x)")
+
+            max_y = np.max(np.hstack((true_vector, pred_vector)))
+            min_y = np.min(np.hstack((true_vector, pred_vector)))
+
+            plt.ylim(min_y-(max_y-min_y)*0.05, max_y+(max_y-min_y)*0.05)
+            plt.plot(x_value_list, pred_vector, label="PINN预测结果", linewidth=2)
+            plt.plot(x_value_list, true_vector, label="数值计算结果", linewidth=2)
+            print(np.average(np.abs(pred_vector-true_vector)))
+            plt.legend()
+            plt.savefig("./output/plots/1d_heat_transfer_pinn_time_{}.png".format(np.round(_time *
+                                                                                           self.conf["delta_time"], 2)))
         return pred_output_matrix
 
     def valuation_(self, pred_matrix):
+        self.data_creator = OneDHeatTransferEquationDataCreator(self.conf)
+        self.data_creator.iter_func()
 
         true_output_matrix = self.data_creator.result_matrix
         # valuation
         l1_norm = np.linalg.norm(pred_matrix.reshape(-1) - true_output_matrix.reshape(-1), 1)
         l2_norm = np.linalg.norm(pred_matrix.reshape(-1) - true_output_matrix.reshape(-1))
 
-        max_error = np.max(np.abs(pred_matrix - true_output_matrix))
-        min_error = np.min(np.abs(pred_matrix - true_output_matrix))
-        average_error = np.average(np.abs(pred_matrix - true_output_matrix))
+        max_error = np.max(np.abs(pred_matrix[int(self.data_creator.time_total/2):, :]
+                                  - true_output_matrix[int(self.data_creator.time_total/2):, :]))
+        min_error = np.min(np.abs(pred_matrix[int(self.data_creator.time_total/2):, :] -
+                                  true_output_matrix[int(self.data_creator.time_total/2):, :]))
+        average_error = np.average(np.abs(pred_matrix[int(self.data_creator.time_total/2):, :] -
+                                          true_output_matrix[int(self.data_creator.time_total/2):, :]))
 
         logger.info("l1 norm {:.7f}".format(l1_norm))
         logger.info("l2 norm {:.7f}".format(l2_norm))
@@ -312,27 +343,33 @@ if __name__ == "__main__":
     _conf = yaml.load(open("./conf/pinn_1d_heat_transfer_equation.yaml"), Loader=yaml.FullLoader)
     weight_path = r"./output/weights/1d_heat_transfer_equation_pinn.pth"
 
-    layer_num_list = [6]
-    neural_num_list = [40]
+    main_ = OneDHeatTransferPINN(_conf, weight_path)
+    if _conf["train_model"] == "True":
+        main_.train()
+    pred_matrix_ = main_.pred()
+    main_.valuation_(pred_matrix_)
 
-    boundary_initial_num = 200
-    common_num = 16000
-    boundary_num = int(boundary_initial_num * 0.7)
-    initial_num = int(boundary_initial_num * 0.3)
-
-    for layer_conf in layer_num_list:
-        for neural_num_conf in neural_num_list:
-            logger.info("\n \n \n")
-            logger.info("layer_conf {}".format(layer_conf))
-            logger.info("neural_num_conf {}".format(neural_num_conf))
-
-            _conf["model_layers"] = np.repeat(neural_num_conf, layer_conf)
-            logger.info("model_layers {}".format(_conf["model_layers"]))
-
-            main_ = OneDHeatTransferPINN(_conf, weight_path)
-            main_.train()
-            pred_matrix_ = main_.pred()
-            main_.valuation_(pred_matrix_)
+    # layer_num_list = [6]
+    # neural_num_list = [40]
+    #
+    # boundary_initial_num = 200
+    # common_num = 16000
+    # boundary_num = int(boundary_initial_num * 0.7)
+    # initial_num = int(boundary_initial_num * 0.3)
+    #
+    # for layer_conf in layer_num_list:
+    #     for neural_num_conf in neural_num_list:
+    #         logger.info("\n \n \n")
+    #         logger.info("layer_conf {}".format(layer_conf))
+    #         logger.info("neural_num_conf {}".format(neural_num_conf))
+    #
+    #         _conf["model_layers"] = np.repeat(neural_num_conf, layer_conf)
+    #         logger.info("model_layers {}".format(_conf["model_layers"]))
+    #
+    #         main_ = OneDHeatTransferPINN(_conf, weight_path)
+    #         main_.train()
+    #         pred_matrix_ = main_.pred()
+    #         main_.valuation_(pred_matrix_)
 
 
     # common_num_list = [4000, 8000, 12000, 16000, 20000]

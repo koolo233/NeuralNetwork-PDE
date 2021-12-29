@@ -7,7 +7,7 @@ output_dims: 1
 # box length(calculate area)
 cal_x_range: [0, 1]
 # calculate time
-time_total: 1
+time_total: 20
 # time step
 delta_time: 0.0001
 # space step
@@ -31,6 +31,7 @@ model_layers: [20, 20, 20, 20, 20, 20, 20, 20, 20]
 load_weight: "False"
 
 # ------------------- train ------------------- #
+train_model: "True"
 max_epochs: 5000
 
 # optimizer
@@ -42,8 +43,8 @@ tolerance_grad: 1e-5
 line_search_fn: "strong_wolfe"
 
 # ------------------- save ------------------- #
-numerical_plot: "False"
-PINN_plot: "False"
+numerical_plot: "True"
+PINN_plot: "True"
 
 figure_output_root: "./output/plots"
 model_output_root: "./output/weights"
