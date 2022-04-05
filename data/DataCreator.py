@@ -9,7 +9,7 @@ import os
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from utils.DataUtils import sampling_func
+from utils.DataUtils import sampling_func, basic_sampling_func
 from utils.PlotUtils import heatmap_plot_func, two_dim_curve_gif_func
 
 
@@ -21,10 +21,10 @@ class BasicDataCreator(object):
     def iter_func(self):
         pass
 
-    def plot_func(self, plot_figure=False, save_figure=False):
+    def plot_func(self, *args):
         pass
 
-    def sampling(self, boundary_num, initial_num, common_num, seed=None):
+    def sampling(self, *args):
         pass
 
 
@@ -455,4 +455,112 @@ class ShrodingerEquationDataCreator(BasicDataCreator):
                                   initial_num=initial_num,
                                   common_num=common_num)
         return data_dict
+
+
+class OneDHeatMultiLayerDataCreator(BasicDataCreator):
+
+    def __init__(self, data_conf):
+        super(OneDHeatMultiLayerDataCreator, self).__init__()
+
+        self.conf = data_conf
+        # compute area length
+        self.compute_length_list = data_conf["length_list"]
+        assert len(self.compute_length_list) == 2
+        # space total length
+        self.space_length = np.sum(self.compute_length_list)
+        # compute time
+        self.time_total = data_conf["time_total"]
+        # time step
+        self.delta_time = data_conf["delta_time"]
+        # space step
+        self.delta_space = data_conf["delta_space"]
+
+        # time discrete num
+        self.time_n = int(self.time_total / self.delta_time)
+        # space discrete num
+        self.space_n = int(np.sum(self.compute_length_list) / self.delta_space)
+
+        # result matrix
+        self.result_matrix = None
+        # param matrix
+        self.parm_matrix = None
+        # k matrix
+        self.k_vector_matrix = None
+
+        # data init
+        self._data_init()
+
+        # # output
+        # if not os.path.exists(data_conf["figure_output_root"]):
+        #     os.makedirs(data_conf["figure_output_root"])
+        # self.figure_output_path = os.path.join(data_conf["figure_output_root"],
+        #                                        data_conf["numerical_figure_output_name"])
+        # self.gif_output_path = os.path.join(data_conf["figure_output_root"],
+        #                                     data_conf["numerical_gif_output_name"])
+
+    def sampling(self):
+
+        # 按照要求进行采样
+
+        # 采样指定数量的样本点用于监督初始条件
+        # 生成采样conf
+        time_conf = [0, 0, self.delta_time]
+        space_conf = [0, self.space_length, self.delta_space]
+        init_cond_sampling_conf = [space_conf, time_conf]
+
+        init_cond_sampling_data = basic_sampling_func(self.conf["initial_num"],
+                                                      init_cond_sampling_conf)
+
+        # 采样指定数量的样本点用于监督边界条件
+        # 生成采样conf
+        time_conf = [0, self.time_total, self.delta_time]
+        # 上下边界
+        space_conf_1 = [0, 0, self.delta_space]
+        boundary_cond_sampling_conf_1 = [space_conf_1, time_conf]
+
+        space_conf_2 = [self.space_length, self.space_length, self.delta_space]
+        boundary_cond_sampling_conf_2 = [space_conf_2, time_conf]
+
+        boundary_cond_sampling_data_1 = basic_sampling_func(int(self.conf["boundary_num"]/2),
+                                                            boundary_cond_sampling_conf_1)
+        boundary_cond_sampling_data_2 = basic_sampling_func(int(self.conf["boundary_num"] / 2),
+                                                            boundary_cond_sampling_conf_2)
+        boundary_cond_sampling_data = [np.hstack((boundary_cond_sampling_data_1[i],
+                                                 boundary_cond_sampling_data_2[i])) for i in range(2)]
+
+        # 采样指定数量的样本点用于监督PDE
+        time_conf = [0, self.time_total, self.delta_time]
+        space_conf = [0, self.space_length, self.delta_space]
+        pde_cond_sampling_conf = [space_conf, time_conf]
+        pde_cond_sampling_data = basic_sampling_func(self.conf["common_num"],
+                                                     pde_cond_sampling_conf)
+
+        # 采样指定数量的样本点用于监督界面条件
+        time_conf = [0, self.time_total, self.delta_time]
+        space_conf = [self.compute_length_list[0], self.compute_length_list[0], self.delta_space]
+        interface_cond_sampling_conf = [space_conf, time_conf]
+        interface_sampling_data = basic_sampling_func(self.conf["interface_num"],
+                                                      interface_cond_sampling_conf)
+
+        sampling_dict = dict()
+        sampling_dict["initial_data"] = init_cond_sampling_data
+        sampling_dict["pde_data"] = pde_cond_sampling_data
+        sampling_dict["boundary_data"] = boundary_cond_sampling_data
+        sampling_dict["interface_data"] = interface_sampling_data
+        return sampling_dict
+
+
+if __name__ == "__main__":
+    test_config = {"length_list": [1, 1],
+                   "time_total": 2,
+                   "delta_time": 0.01,
+                   "delta_space": 0.01,
+                   "initial_num": 10,
+                   "boundary_num": 30,
+                   "common_num": 20,
+                   "interface_num": 20}
+    test_data_creator = OneDHeatMultiLayerDataCreator(test_config)
+
+    samples = test_data_creator.sampling()
+    print(samples)
 

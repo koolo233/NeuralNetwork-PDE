@@ -8,6 +8,56 @@ import random
 import numpy as np
 
 
+def basic_sampling_func(n_sampling,
+                        sampling_range_conf,
+                        sampling_type="random",
+                        random_state=None):
+    """
+    基础采样函数
+    :param n_sampling: 采样数
+    :param sampling_range_conf: 采样范围以及采样步长
+    :param sampling_type: 采样方法， 默认为完全随机采样
+    :param random_state: 随机种子
+    :return: 采样结果，按照传入的sampling_range_conf的顺序返回
+    """
+
+    # 生成采样区域
+    linespace_list = [np.arange(sampling_conf[0], sampling_conf[1] + np.finfo(np.float32).eps, sampling_conf[2])
+                      for sampling_conf in sampling_range_conf]
+
+    sampling_space = np.meshgrid(*linespace_list)
+
+    # 执行采样
+    # 采样列表
+    sampling_func_dict = {"random": random_sampling}
+    sampling_result = sampling_func_dict[sampling_type](sampling_space, n_sampling, random_state)
+
+    return sampling_result
+
+
+def random_sampling(sampling_space, n_sampling, random_state):
+    """
+    随机采样函数
+    :param sampling_space: 采样空间
+    :param n_sampling: 采样数
+    :param random_state: 随机种子
+    :return: 采样结果
+    """
+
+    if random_state is not None:
+        random.seed(random_state)
+        np.random.seed(random_state)
+
+    # 转换为一维
+    sampling_data_one_dim = [np.reshape(sampling_data, (-1,)) for sampling_data in sampling_space]
+    # 随机采样
+    sampling_data_num = len(sampling_data_one_dim[0])
+    sampling_index = random.sample(range(sampling_data_num), n_sampling)
+
+    sampling_result = [temp_sampling_data[sampling_index] for temp_sampling_data in sampling_data_one_dim]
+    return sampling_result
+
+
 def sampling_func(input_matrix,
                   t_range,
                   x_range,

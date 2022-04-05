@@ -314,5 +314,5 @@ class BurgersEquationPINN(object):
 if __name__ == "__main__":
     weight_path = os.path.join(_conf["model_output_root"], _conf["model_output_name"])
     main_ = BurgersEquationPINN(_conf, weight_path)
-    # main_.train()
+    main_.train()
     main_.pred_and_valuation()

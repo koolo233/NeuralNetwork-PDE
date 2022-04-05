@@ -1,0 +1,77 @@
+# ------------------- basic -------------------- #
+func_name: "1d_heat_transfer_equation_multilayer"
+seed: 1024
+input_dims: 2
+output_dims: 1
+# ------------------- material properties -------------------- #
+# specific heat capacity
+# conductivity
+# density
+# convective
+material1_properties: [914.0, 3.960, 1790., 70.]
+material2_properties: [1304.2, 0.212, 1300., 120.]
+
+# boundary condition type
+# default: constant
+# else: convective
+boundary_condition_type: "constant"
+
+# ------------------- data ------------------- #
+# box length(calculate area)
+length_list: [0.02, 0.03]
+# calculate time
+time_total: 13320
+# time step
+delta_time: 1
+# space step
+delta_space: 0.000001
+
+# number of boundary data sampling
+boundary_num: 5000
+# number of initial data sampling
+initial_num: 10000
+# number of common data sampling
+common_num: 50000
+# number of interface data sampling
+interface_num: 5000
+
+# data loader batch size
+# "-1" means loader all data
+boundary_batch_size: -1
+initial_batch_size: -1
+common_batch_size: -1
+interface_batch_size: -1
+
+# ------------------- model ------------------- #
+#model_layers: [[20, 20, 20, 20, 20, 20, 20],
+#               [20, 20, 20, 20, 20, 20, 20]]
+model_layers: [[60], [60]]
+load_weight: "False"
+
+# ------------------- train ------------------- #
+train_model: "True"
+max_epochs: 30000
+
+# optimizer
+lr: 0.2
+max_iter: 50000
+max_eval: 50000
+history_size: 50
+tolerance_grad: 1e-5
+line_search_fn: "strong_wolfe"
+
+# ------------------- save ------------------- #
+numerical_plot: "True"
+PINN_plot: "True"
+
+figure_output_root: "./output/plots"
+model_output_root: "./output/weights"
+
+numerical_figure_output_name: "1d_heat_transfer_equation_numerical.png"
+numerical_gif_output_name: "1d_heat_transfer_equation_numerical.gif"
+pinn_figure_output_name: "1d_heat_transfer_equation_PINN.png"
+pinn_gif_output_name: "1d_heat_transfer_equation_PINN.gif"
+model_output_name: "1d_heat_transfer_equation_multi_pinn.pth"
+
+different_figure_output_name: "1d_heat_transfer_equation_different.png"
+different_gif_output_name: "1d_heat_transfer_equation_different.gif"
